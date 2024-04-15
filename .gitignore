@@ -1,0 +1,4 @@
+CMakeLists.txt.user
+*.ipynb_checkpoints/
+build*/
+*/build*/
