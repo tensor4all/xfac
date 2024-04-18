@@ -18,6 +18,7 @@ if (NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/arma/CMakeLists.txt")
 endif()
 
 add_subdirectory(extern/arma)
+add_subdirectory(extern/cheby)
 
 if (XFAC_BUILD_TEST)
     add_subdirectory(extern/Catch2)

@@ -41,6 +41,8 @@ struct TensorCI2 {
 
 
     /// constructs a rank-1 TensorCI2 from a function f:(a1,a2,...,an)->eT  where the index ai is in [0,localDim[i]).
+    TensorCI2() = default;
+
     TensorCI2(TensorFunction<T> const& f_, vector<int> localDim, TensorCI2Param param_={})
         : f {f_}
         , param(param_)

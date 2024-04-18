@@ -19,6 +19,8 @@ struct TensorFunction {
     function<T(vector<int>)> f;
     bool useCache=false;
 
+    TensorFunction() = default;
+
     TensorFunction(function<T(vector<int>)> f_, bool useCache_=false) : f(f_), useCache(useCache_) {}
 
     T operator()(MultiIndex const& id) const { return f({id.begin(),id.end()}); }

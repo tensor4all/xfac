@@ -76,7 +76,7 @@ TEST_CASE("Test CrossData")
     uvec I,J;
     while(I.size()< 0.2*A.n_rows) // random pivots
     {
-        uint i=rand()%A.n_rows, j=rand()%A.n_cols;
+        grid::uint i=rand()%A.n_rows, j=rand()%A.n_cols;
         double err=std::abs((A(i,j)-A.submat(uvec({i}),J) * A.submat(I,J).i() * A.submat(I,uvec({j})) ).eval()(0,0));
         if (err>tol) {
             I=join_cols(I,uvec({i}));
