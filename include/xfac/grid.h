@@ -34,9 +34,9 @@ std::vector<T> logspace(T a, T b, size_t n) {
     return xs;
 }
 
+/// Gauss Kronrod quadrature as defined at boost::math::quadrature::gauss_kronrod<double, 15>
 inline auto QuadratureGK15(double a=0, double b=1)
 {
-    // can be obtained at boost::math::quadrature::gauss_kronrod<double, 15>
     static const vector<double> abscissa={0, 0.2077849550078985, 0.4058451513773972, 0.5860872354676911, 0.7415311855993945, 0.8648644233597691, 0.9491079123427585, 0.9914553711208126};
     static const vector<double> weights={0.2094821410847278, 0.2044329400752989, 0.1903505780647854, 0.1690047266392679, 0.1406532597155259, 0.1047900103222502, 0.06309209262997856, 0.02293532201052922};
     int nq=2*abscissa.size()-1;
@@ -51,11 +51,18 @@ inline auto QuadratureGK15(double a=0, double b=1)
     return make_pair(xi,weight);
 }
 
+
+/// This class represents a quantics grid.
+/// A quantics grid is an uniform grid with $2^R$ points in [a,b):
+/// $x_i=a+i\Delta$,
+/// where $\Delta = (b -a)/2^R $ and $i=0,1,...,2^R-1 $.
+/// The function $f$ is mapped to a tensor with $R$ legs in the following way. The binary digits $\{\sigma_i\}$ of $i$ are used as indices of the tensor $F$ defined by:
+/// $ F(\{\sigma_i\})=f(x_i) $
 struct Quantics {
-    double a=0, b=1;
-    int nBit=10;
-    int dim=1;
-    bool pack=false;
+    double a=0, b=1;         ///< the start and end of the interval for all the variables
+    int nBit=10;             ///< number of bit for each variable
+    int dim=1;               ///< dimension of the hypercube
+    bool fused=false;        ///< whether to combine the bits of the same "scale"
 
     double deltaX;
     double deltaVolume;
@@ -67,11 +74,11 @@ struct Quantics {
         , b(b_)
         , nBit(nBit_)
         , dim(dim_)
-        , pack(pack_)
+        , fused(pack_)
         , deltaX( (b-a)/(1ull<<nBit) )
         , deltaVolume( pow(deltaX,dim) )
-        , tensorLen( pack ? nBit : nBit*dim )
-        , tensorLocDim( pack ? 1<<dim : 2 )
+        , tensorLen( fused ? nBit : nBit*dim )
+        , tensorLocDim( fused ? 1<<dim : 2 )
     { assert(nBit<64); }
 
 
@@ -84,7 +91,7 @@ struct Quantics {
         for(auto i=0u; i<us.size(); i++) {
             std::bitset<64> bi=(us[i]-a)/deltaX;
             for(auto d=0; d<nBit; d++)
-                if (pack) id[d] |= (bi[d]<<i);
+                if (fused) id[d] |= (bi[d]<<i);
                 else id[i+d*dim]=bi[d];
         }
         return id;
@@ -97,20 +104,20 @@ struct Quantics {
         for(auto i=0; i<dim; i++) {
             std::bitset<64> bi;
             for(auto d=0; d<nBit; d++)
-                if (pack) bi[d]=id[d] & (1<<i);
+                if (fused) bi[d]=id[d] & (1<<i);
                 else bi[d]=id[i+d*dim];
             us[i]=a+deltaX*bi.to_ullong();
         }
         return us;
     }
 
-    void save(std::ostream &out) const { out<<a<<" "<<b<<" "<<nBit<<" "<<dim<<" "<<pack<<std::endl; }
+    void save(std::ostream &out) const { out<<a<<" "<<b<<" "<<nBit<<" "<<dim<<" "<<fused<<std::endl; }
 
     static Quantics load(std::istream& in)
     {
         Quantics g0;
-        in>>g0.a>>g0.b>>g0.nBit>>g0.dim>>g0.pack;
-        return Quantics(g0.a,g0.b,g0.nBit,g0.dim,g0.pack);
+        in>>g0.a>>g0.b>>g0.nBit>>g0.dim>>g0.fused;
+        return Quantics(g0.a,g0.b,g0.nBit,g0.dim,g0.fused);
     }
 
 };
