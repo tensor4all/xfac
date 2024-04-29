@@ -4,8 +4,12 @@ Variable separation to approximate a given tensor or function using tensor train
 
 ## Documentation
 
-Including API documentation and tutorials:
-https://xfac.readthedocs.io/en/latest/
+- API documentation and tutorials are kindly hosted at https://xfac.readthedocs.io/en/latest
+- You can also read the code because is not big and includes comments :-)
+
+### Examples
+
+See folder `example` (for **c++**) and `notebook` (for **python**).
 
 ## Dependencies
 
@@ -96,17 +100,11 @@ target_link_library(myTarget xfac::xfac)
 Notice that the manual copy can be automatized by adding `xfac` as a `git submodule` or using `cmake FetchContent`.
 
 
-## Examples
+## Building the documentation
+At the folder docs:
+- The [Doxygen](https://doxygen.nl) documentation can be generate by typing `doxygen`. The output goes to `doxygen_out/` including the html version (open `index.html`) and latex version (after `make` you will find refman.pdf).
 
-See folder `example` (for **c++**) and `notebook` (for **python**).
-
-## Documentation
-
-- The [Doxygen](https://doxygen.nl) documentation can be generate by typing `doxygen` in the folder `docs`. The output goes to `build/doc` including the html version (open `index.html`) and latex version (after `make` you will find refman.pdf).
-
-- The `sphinx` documentation can also be generated (requires doxygen and breathe) by doing in the folder `docs`:
+- The [Sphinx](https://www.sphinx-doc.org/) documentation can also be generated (requires `doxygen`, `sphinx_rtd_theme` and [breathe](https://www.breathe-doc.org/)) by doing:
 ```
 sphinx-build -b html . doc_out
 ```
-
-- You can also read the code because is not big and includes comments :-)
