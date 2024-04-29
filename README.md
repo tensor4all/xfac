@@ -97,6 +97,11 @@ See folder `example` (for **c++**) and `notebook` (for **python**).
 
 ## Documentation
 
-The [Doxygen](https://doxygen.nl) documentation can be generate by typing `doxygen` in the folder `doc`. The output goes to `build/doc` including the html version (open `index.html`) and latex version (after `make` you will find refman.pdf).
+- The [Doxygen](https://doxygen.nl) documentation can be generate by typing `doxygen` in the folder `docs`. The output goes to `build/doc` including the html version (open `index.html`) and latex version (after `make` you will find refman.pdf).
 
-You can also read the code because is not big and includes commments :-)
+- The `sphinx` documentation can also be generated (requires doxygen and breathe) by doing in the folder `docs`:
+```
+sphinx-build -b html . doc_out
+```
+
+- You can also read the code because is not big and includes comments :-)
