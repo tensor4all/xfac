@@ -9,7 +9,11 @@ breathe_projects = {}
 subprocess.call('doxygen', shell=True)
 breathe_projects['xfac'] = 'doxygen_out/xml'
 
+# -- Project information -----------------------------------------------------
 
+project = 'xfac'
+copyright = '2024, Tensor4all'
+author = 'Tensor4all team'
 
 from cgitb import html
 
