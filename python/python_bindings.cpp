@@ -45,15 +45,15 @@ void declare_TensorCI(py::module &m, std::string typestr) {
     m.def("sum", xfac::operator+<T>,"tt1"_a, "tt2"_a);
     m.def("sum", &xfac::sum<T>, "tts"_a, "reltol"_a=1e-12, "maxBondDim"_a=0);
 
-    using QuanticsTTd=QTensorTrain<T>;
-    py::class_<QuanticsTTd>(m, ("QuanticsTT"s+typestr).c_str())
+    using QTensorTraind=QTensorTrain<T>;
+    py::class_<QTensorTraind>(m, ("QTensorTrain"s+typestr).c_str())
             .def(py::init<TensorTraind, grid::Quantics>(), "tt"_a,"grid"_a)
-            .def_readonly("tt",  &QuanticsTTd::tt)
-            .def_readonly("grid",  &QuanticsTTd::grid)
-            .def("eval", &QuanticsTTd::eval)
-            .def("integral", &QuanticsTTd::integral)
-            .def("save", py::overload_cast<string>(&QuanticsTTd::save, py::const_))
-            .def_static("load", py::overload_cast<string>(&QuanticsTTd::load))
+            .def_readonly("tt",  &QTensorTraind::tt)
+            .def_readonly("grid",  &QTensorTraind::grid)
+            .def("eval", &QTensorTraind::eval)
+            .def("integral", &QTensorTraind::integral)
+            .def("save", py::overload_cast<string>(&QTensorTraind::save, py::const_))
+            .def_static("load", py::overload_cast<string>(&QTensorTraind::load))
             ;
 
     using tensorF=function<T(vector<int>)>;
