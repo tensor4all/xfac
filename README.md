@@ -2,6 +2,11 @@
 
 Variable separation to approximate a given tensor or function using tensor train cross interpolation.
 
+## Documentation
+
+Including API documentation and tutorials:
+https://xfac.readthedocs.io/en/latest/
+
 ## Dependencies
 
 The dependencies are **automatically satisfied** using `git submodule`. They are
