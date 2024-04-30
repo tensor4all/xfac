@@ -7,7 +7,7 @@ build:
     python: "3.10"
   jobs:
     pre_build:
-      - "subprocess.call('doxygen', shell=True, cwd='docs/')"
+      - "python -c \"import subprocess; subprocess.call('doxygen', shell=True, cwd='docs/')\""
       # Generate on-the-fly Sphinx configuration from Jupyter Book's _config.yml
       - "jupyter-book config sphinx docs/"
 
