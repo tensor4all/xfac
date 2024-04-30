@@ -34,7 +34,7 @@ html:
 
 sphinx:
   config:
-    breathe_projects.xfac: doxygen_out/xml
+    breathe_projects: {xfac: doxygen_out/xml}
     breathe_default_project: xfac
     intersphinx_mapping:
       ebp:
