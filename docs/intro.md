@@ -2,18 +2,37 @@
 
 # Welcome to xfac's documentation!
 
-This is the c++ API documentation.
+Xfac is a numerical software library to learn low-rank tensor train representations.
+It is written in C++, provides Python bindings and is distributed under an open-source license.
+This site collects Python tutorial examples and the documentation of the C++ API.
+The algorithms and the mathematical background are described in reference:
 
-## Installation
+> Yuriel Núñez Fernández, Marc K. Ritter, Matthieu Jeannin, Jheng-Wei Li, Thomas Kloss, Olivier Parcollet, Jan von Delft, Hiroshi Shinaoka, and Xavier Waintal, 
+> *Learning low-rank tensor train representations: new algorithms and libraries*, *in preparation*, (2024).
 
-To install xfac you just have to follow the instructions at the README.md file that you can get from the repo:
-https://github.com/tensor4all/xfac
+
+**Source code**
+
+The public source code repo is: https://github.com/tensor4all/xfac
+
+**Installation**
+
+Install Xfac according to the instructions in the [README.md](https://github.com/tensor4all/xfac/blob/main/README.md) file of the code repo.
+
+**License**
+
+The licence is written in file [LICENSE.rst](https://github.com/tensor4all/xfac/blob/main/LICENSE.rst) of the code repo.
+
 
 ## Tutorials
 
 * [Quantics for 1d function](/tutorial-python/quantics1d)
+* [Quantics for 2d function](/tutorial-python/quantics2d)
+* [Integration of a multivariate function](/tutorial-python/integral_nd)
 
-## Factorize a (discrete) tensor function
+## C++ API documentation
+
+### Factorize a (discrete) tensor function
 
 ```{eval-rst}
 
@@ -24,7 +43,7 @@ https://github.com/tensor4all/xfac
     :members:
 ```
 
-## Factorize a continuous function using natural grid
+### Factorize a continuous function using natural grid
 
 ```{eval-rst}
 
@@ -37,7 +56,7 @@ https://github.com/tensor4all/xfac
     :members:
 ```
 
-## Factorize a continuous function using quantics grid
+### Factorize a continuous function using quantics grid
 
 ```{eval-rst}
 
@@ -51,7 +70,7 @@ https://github.com/tensor4all/xfac
     :members:
 ```
 
-## Automatic building of matrix product operators (autoMPO)
+### Automatic building of matrix product operators (autoMPO)
 
 ```{eval-rst}
 
