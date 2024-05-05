@@ -2,9 +2,9 @@
 # Learn more at https://jupyterbook.org/customize/config.html
 # Comprehensive example: https://github.com/executablebooks/jupyter-book/blob/master/docs/_config.yml
 
-title: Tensor cross interpolation (xfac)
+title: xfac
 author: tensor4all team
-#logo: logo.png
+logo: tci.png
 
 # Force re-execution of notebooks on each build.
 # See https://jupyterbook.org/content/execute.html
@@ -17,8 +17,8 @@ latex:
     targetname: book.tex
 
 # Add a bibtex file so that we can create citations
-#bibtex_bibfiles:
-#  - references.bib
+bibtex_bibfiles:
+  - references.bib
 
 # Information about where the book exists on the web
 repository:
