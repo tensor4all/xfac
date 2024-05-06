@@ -1,16 +1,23 @@
-# Cross factorization of tensors (xfac)
+# Cross factorization of tensors: xfac
 ![](docs/tci.png)
 
-`xfac` is a c++ (with python binding) library to learn low-rank tensor train representations form a given tensor or function.
+`xfac` is a c++ library (with python binding) to learn low-rank tensor train representations form a given tensor or function.
 The learning is made by *tensor cross interpolation*.
-Given a multidimensional function $f:\mathcal{R}^n \rightarrow \mathcal{C}$, the library can generate a factorization:
+Given a multidimensional function $f:\mathcal{R}^n \rightarrow \mathcal{C}$, the library can generate an accurate approximation:
 
 $$
 f(x_1,x_2,...,x_n) \approx M_1(x_1)M_2(x_2)...M_n(x_n)
 $$
 
-where $M$ are matrices. As the variables are now separated, some tasks like integration or sum becomes very cheap.
-This factorization can be relevant even for function of one variable via the so-called "quantics" representation [^1]. 
+where $M$ are matrices. As the variables are effectively separated, some tasks like integration or sum are now very cheap.
+
+This factorization can be relevant even for function of one variable via the so-called *quantics* representation. In quantics, each variable is replaced by its binary digits $\sigma_0,\sigma_1,...,\sigma_{R-1}$: 
+
+$$
+f(\sigma_{0}\sigma_{1}...\sigma_{R-1}) = f(x) \approx M_1(\sigma_{0})M_2(\sigma_1)...M_n(\sigma_{R-1})
+$$
+
+making explicit the possible low entanglement between different scales of the function. Potentially, quantics allows arbitrary resolution representation (by using astronomically big grids like $2^R$) with cost scaling linear in $R$.
 
 As examples of applications we can mention:
 1. Integration of multidimensional functions:
@@ -22,6 +29,12 @@ As examples of applications we can mention:
 5. Automatic construction of matrix product operators
 6. Function optimization
 7. Quantum chemistry
+
+The implemented algorithms and the mathematical background are described in reference:
+
+> Yuriel Núñez Fernández, Marc K. Ritter, Matthieu Jeannin, Jheng-Wei Li, Thomas Kloss, Olivier Parcollet, Jan von Delft, Hiroshi Shinaoka, and Xavier Waintal, 
+> *Learning low-rank tensor train representations: new algorithms and libraries*, *in preparation*, (2024).
+
 
 ## Documentation
 
