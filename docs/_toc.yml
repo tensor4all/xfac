@@ -6,7 +6,7 @@ root: intro
 parts:
 - caption: Tutorials
   chapters:
-#  - file: markdown
+  - file: tutorial-python/intro-tutorial
   - file: tutorial-python/integral_nd
   - file: tutorial-python/quantics1d
   - file: tutorial-python/quantics2d  
