@@ -19,7 +19,7 @@ $$
 F(\sigma_{0}\sigma_{1}...\sigma_{R-1}) \equiv f(x(\bar{\sigma})) \approx M_1(\sigma_{0})M_2(\sigma_1)...M_n(\sigma_{R-1})
 $$
 
-making explicit the possible low entanglement between different scales of the function. Potentially, quantics allows arbitrary resolution representation (by using astronomically big grids like $2^R$) with cost scaling linear in $R$.
+making explicit the possible low entanglement between different scales of the function. Potentially, quantics allows arbitrary resolution representation (by using astronomically big grids of $2^R$ points) with cost scaling linear in $R$.
 
 As examples of applications we can mention:
 1. Integration of multidimensional functions:
@@ -49,6 +49,3 @@ Install `xfac` and this documentation according to the instructions in the [READ
 **License**
 
 The licence is written in file [LICENSE.rst](https://github.com/tensor4all/xfac/blob/main/LICENSE.rst) of the code repo.
-
-**Building this documentation locally**
-Follow the steps described at 
