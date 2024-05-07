@@ -3,15 +3,21 @@
 
 format: jb-book
 root: intro
-#parts:
-#- caption: Basic usage 🪄
-#  chapters:
-#  - file: markdown
-#  - file: tutorial-python/quantics1d
+parts:
+- caption: Tutorials
+  chapters:
+  - file: tutorial-python/intro-tutorial
+  - file: tutorial-python/integral_nd
+  - file: tutorial-python/quantics1d
+  - file: tutorial-python/quantics2d  
 #  - file: markdown-notebooks
-#- caption: Cool extensions 🕶️
-#  chapters:
-#  - file: intersphinx
+- caption: c++ API
+  chapters:
+  - file: api/api1
+  - file: api/api2
+  - file: api/api3
+  - file: api/api4
+  
 #  - file: sphinx-examples
 #  - file: sphinx-hoverxref
 #  - file: sphinx-proof
