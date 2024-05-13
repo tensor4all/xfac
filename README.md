@@ -58,7 +58,7 @@ The dependencies are **automatically satisfied** using `git submodule`. They are
 ## Installation
 
 ```
-git clone https://gitlab.kwant-project.org/ttd/xfac.git
+git clone https://github.com/tensor4all/xfac.git
 cd xfac
 cmake -S . -B build -D CMAKE_BUILD_TYPE=Release
 ```
