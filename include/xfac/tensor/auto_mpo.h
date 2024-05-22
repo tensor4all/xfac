@@ -87,7 +87,7 @@ struct PolyOp {
     {
         for(const ProdOp<T,d>& A : As.ops) add(A);
         tt = tt + As.tt;
-        if (!tt.M.empty()) tt.compressCI(reltol);
+        compress(tt);
         tt_nTerm += As.tt_nTerm;
         return *this;
     }
@@ -124,13 +124,11 @@ struct PolyOp {
             for (auto ii=0; ii<compressEvery; ii++)
                 if (auto pos=i*compressEvery+ii; pos<ops.size())
                     tts[i] = tts[i] + ops[pos].to_tensorTrain(L);
-            if (use_svd) tts[i].compressSVD(reltol);
-            else tts[i].compressCI(reltol);
+            compress(tts[i]);
         }
-        if (tt.M.empty()) return sum(tts,reltol);
-        auto tt2 = fix_tt_len() + sum(tts,reltol);
-        tt2.compressCI(reltol);
-        return tt2;
+        auto sum_tt=sum(tts,reltol,0,use_svd);
+        if (tt.M.empty()) return sum_tt;
+        return sum(vector{fix_tt_len(),sum_tt},reltol,0,use_svd);
     }
 
     /// compute the overlap with a given mps (the physical dimensions should match)
@@ -151,6 +149,13 @@ private:
         auto tt2=tt;
         tt2.M.resize(length(),onec);
         return tt2;
+    }
+
+    void compress(TensorTrain<T> &tt) const
+    {
+        if (tt.M.empty()) return;
+        if (use_svd) tt.compressSVD(reltol);
+        else tt.compressCI(reltol);
     }
 
     vector<ProdOp<T,d>> ops;

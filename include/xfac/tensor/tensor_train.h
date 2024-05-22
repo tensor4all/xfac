@@ -192,7 +192,7 @@ TensorTrain<T> operator+(TensorTrain<T> const& tt1, TensorTrain<T> const& tt2)
 
 /// compute the sum of many tensor trains, while compressing along the tree.
 template<class T>
-TensorTrain<T> sum(vector<TensorTrain<T>> v,double reltol=1e-12, int maxBondDim=0)
+TensorTrain<T> sum(vector<TensorTrain<T>> v,double reltol=1e-12, int maxBondDim=0, bool use_svd=false)
 {
     if (v.empty()) return {};
     int step=1;
@@ -202,7 +202,8 @@ TensorTrain<T> sum(vector<TensorTrain<T>> v,double reltol=1e-12, int maxBondDim=
         for(int i=0;i<v.size();i+=2*step)
             if (i+step<v.size()) {
                 v[i]=v[i]+v[i+step];
-                v[i].compressCI(reltol, maxBondDim);
+                if (use_svd) v[i].compressSVD(reltol, maxBondDim);
+                else v[i].compressCI(reltol, maxBondDim);
             }
         step+=step;
     }

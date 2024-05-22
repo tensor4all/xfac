@@ -43,7 +43,7 @@ void declare_TensorCI(py::module &m, std::string typestr) {
             ;
 
     m.def("sum", xfac::operator+<T>,"tt1"_a, "tt2"_a);
-    m.def("sum", &xfac::sum<T>, "tts"_a, "reltol"_a=1e-12, "maxBondDim"_a=0);
+    m.def("sum", &xfac::sum<T>, "tts"_a, "reltol"_a=1e-12, "maxBondDim"_a=0, "use_svd"_a=false);
 
     using QTensorTraind=QTensorTrain<T>;
     py::class_<QTensorTraind>(m, ("QTensorTrain"s+typestr).c_str())
