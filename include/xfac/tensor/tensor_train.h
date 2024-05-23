@@ -198,7 +198,7 @@ TensorTrain<T> sum(vector<TensorTrain<T>> v,double reltol=1e-12, int maxBondDim=
     int step=1;
     while (v.size()>step)
     {
-        //#pragma omp parallel for
+        #pragma omp parallel for
         for(int i=0;i<v.size();i+=2*step)
             if (i+step<v.size()) {
                 v[i]=v[i]+v[i+step];
