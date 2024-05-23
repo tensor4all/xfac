@@ -45,26 +45,6 @@ PolyOp<> FreeFermion(arma::mat const& K)
     return H;
 }
 
-PolyOp<> InteractingFermion(arma::mat const& Vijkl)
-{
-    int L=sqrt(Vijkl.n_rows);
-    auto Fermi=[=](int i, bool dagger)
-    {
-        LocOp<> create={{0,1},{0,0}};
-        auto ci=ProdOp<> {{ i%L, dagger ? create : create.t() }};
-        for(auto j=0; j<i; j++) ci[j]=LocOp<> {{1,0},{0,-1}};    // fermionic sign
-        return ci;
-    };
-    PolyOp H;
-    for(auto i=0; i<L; i++)
-        for(auto j=i+1; j<L; j++)
-            for(auto k=0; k<L; k++)
-                for(auto l=k+1; l<L; l++)
-            if (fabs(Vijkl(i+j*L,k+l*L))>1e-14)
-                H += Fermi(i,true)*Fermi(j,true)*Fermi(k,false)*Fermi(l,false)*Vijkl(i+j*L,k+l*L);
-    return H;
-}
-
 void TestAutoMPO(PolyOp<> H)
 {
     auto mps1=H.to_tensorTrain();
@@ -77,6 +57,64 @@ void TestAutoMPO(PolyOp<> H)
             cout<<Mi.n_slices<<" ";
         cout<<"\noverlap: |1-<mps|H>/<mps|mps>|="<<abs(1-H.overlap(mps)/mps.norm2()) << endl;
     }
+}
+
+PolyOp<> HamQC(arma::mat const& K,arma::mat const& Vijkl, bool use_svd)
+{
+    PolyOp<> H;
+    H.use_svd=use_svd;
+    int L=sqrt(Vijkl.n_rows);
+
+    auto Fermi=[=](int i, bool dagger)
+    {
+        LocOp<> create={{0,1},{0,0}};
+        auto ci=ProdOp<> {{ i%L, dagger ? create : create.t() }};
+        for(auto j=0; j<i; j++) ci[j]=LocOp<> {{1,0},{0,-1}};    // fermionic sign
+        return ci;
+    };
+
+    for(auto i=0; i<L; i++)
+        for(auto j=0; j<L; j++)
+            if (fabs(K(i,j))>1e-14)
+                H += Fermi(i,true)*Fermi(j,false)*K(i,j);
+
+
+    for(auto i=0; i<L; i++)
+        for(auto j=i+1; j<L; j++)
+            for(auto k=0; k<L; k++)
+                for(auto l=k+1; l<L; l++)
+            if (fabs(Vijkl(i+j*L,k+l*L))>1e-14)
+                H += Fermi(i,true)*Fermi(j,true)*Fermi(k,false)*Fermi(l,false)*Vijkl(i+j*L,k+l*L);
+    return H;
+}
+
+double ErrorQC(arma::mat const& K,arma::mat const& Vijkl, TensorTrain<double> const& mps)
+{
+    double sum=0;
+    int L=sqrt(Vijkl.n_rows);
+
+    auto Fermi=[=](int i, bool dagger)
+    {
+        LocOp<> create={{0,1},{0,0}};
+        auto ci=ProdOp<> {{ i%L, dagger ? create : create.t() }};
+        for(auto j=0; j<i; j++) ci[j]=LocOp<> {{1,0},{0,-1}};    // fermionic sign
+        return ci;
+    };
+
+    for(auto i=0; i<L; i++)
+        for(auto j=0; j<L; j++)
+            if (fabs(K(i,j))>1e-14)
+                sum += ProdOp<> {Fermi(i,true)*Fermi(j,false)*K(i,j)}.overlap(mps);
+
+
+    for(auto i=0; i<L; i++)
+        for(auto j=i+1; j<L; j++)
+            for(auto k=0; k<L; k++)
+                for(auto l=k+1; l<L; l++)
+            if (fabs(Vijkl(i+j*L,k+l*L))>1e-14)
+                sum += ProdOp<> {Fermi(i,true)*Fermi(j,true)*Fermi(k,false)*Fermi(l,false)*Vijkl(i+j*L,k+l*L)}.overlap(mps);
+
+    return abs(1-sum/mps.norm2());
 }
 
 int main()
@@ -96,22 +134,29 @@ int main()
 
     cout<<"\n------- Free Fermions random ------\n";
 
-    arma::mat K2(20,20,arma::fill::randu);
+    arma::mat K2(15,15,arma::fill::randu);
     TestAutoMPO(FreeFermion(K2));
 
     cout<<"\n------- Chemistry Ham versus L ------\n";
-    int L=20;
+    int L=50;
     arma::mat K3(L,L,arma::fill::randu);
     K3=K3*K3.t();
     arma::mat V(L*L,L*L,arma::fill::randu);
-    cout<<"L nterms D theoretical_D\n";
+    cout<<"L nterms D_theory D_CI errorCI D_SVD errorSVD\n";
     for(auto len=6; len<=L; len+=4) {
         auto Kin=K3.submat(0,0,len-1,len-1);
         auto Vijkl=V.submat(0,0,len*len-1,len*len-1);
-        auto H=FreeFermion(Kin)+InteractingFermion(Vijkl);
-        cout<<len<<" "<<H.nTerm()<<" ";
-        auto mps=H.to_tensorTrain();
-        cout<<mps.M[len/2].n_rows <<" "<< 2*pow(len/2,2)+3*(len/2)+2 << endl;
+        {// using CI
+            auto H=HamQC(Kin,Vijkl,false);
+            auto mps=H.to_tensorTrain();
+            cout<<len<<" "<<H.nTerm()<<" "<< 2*pow(len/2,2)+3*(len/2)+2 <<" " ;
+            cout<<mps.M[len/2].n_rows<< " "<< ErrorQC(Kin,Vijkl,mps) << " ";
+        }
+        {// using SVD
+            auto H=HamQC(Kin,Vijkl,true);
+            auto mps=H.to_tensorTrain();
+            cout<<mps.M[len/2].n_rows<< " "<< ErrorQC(Kin,Vijkl,mps) << endl;
+        }
     }
 
     return 0;
