@@ -61,7 +61,7 @@ struct SVDDecomp {
     SVDDecomp(arma::Mat<T> const& M, bool leftOrthogonal_=true, double reltol=1e-12, int rankMax=0)
         : leftOrthogonal(leftOrthogonal_)
     {
-        arma::svd_econ(U,s,V,M);
+        arma::svd_econ(U,s,V,M,"both","std");
         int n=findnValues(s, reltol);
         if (rankMax>0 && rankMax<n) n=rankMax;
         s.resize(n);
