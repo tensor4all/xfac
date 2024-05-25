@@ -117,6 +117,21 @@ double ErrorQC(arma::mat const& K,arma::mat const& Vijkl, TensorTrain<double> co
     return abs(1-sum/mps.norm2());
 }
 
+
+/// Example of 1-P where P is a projector
+PolyOp<> Projector(int L, bool use_svd)
+{
+    LocOp<> nOp = {{0,0},{0,1}};
+    PolyOp<> H;
+    H.use_svd=use_svd;
+    H.reltol=numeric_limits<double>::epsilon();
+    H += ProdOp<> {};  // add the identity
+    ProdOp<> term;
+    for(int i=0; i<L; i++) term[i]=nOp; // fill all sites with nOp
+    H += term*(-1.0);
+    return H;
+}
+
 int main()
 {
     int len=50;
@@ -138,7 +153,7 @@ int main()
     TestAutoMPO(FreeFermion(K2));
 
     cout<<"\n------- Chemistry Ham versus L ------\n";
-    int L=50;
+    int L=14;
     arma::mat K3(L,L,arma::fill::randu);
     K3=K3*K3.t();
     arma::mat V(L*L,L*L,arma::fill::randu);
@@ -156,6 +171,26 @@ int main()
             auto H=HamQC(Kin,Vijkl,true);
             auto mps=H.to_tensorTrain();
             cout<<mps.M[len/2].n_rows<< " "<< ErrorQC(Kin,Vijkl,mps) << endl;
+        }
+    }
+
+    cout<<"\n------- Projector example 1-|1111><1111| versus L ------\n";
+    cout<<"L D_CI D_SVD\n";
+    int delta=1;
+    for(int len : {100,101,102,103,104,200,300,1000}) {
+        {// using CI
+            auto H=Projector(len,false);
+            auto mps=H.to_tensorTrain();
+            auto bd=2u;
+            for(auto i=1; i<len; i++) if (mps.M[i].n_rows<bd) bd=mps.M[i].n_rows;
+            cout<<len<<" "<<bd<< " ";
+        }
+        {// using SVD
+            auto H=Projector(len,true);
+            auto mps=H.to_tensorTrain();
+            auto bd=2u;
+            for(auto i=1; i<len; i++) if (mps.M[i].n_rows<bd) bd=mps.M[i].n_rows;
+            cout<<bd<< endl;
         }
     }
 
