@@ -1,4 +1,4 @@
-# Factorize a continuous function using quantics grid
+# Factorize a function on the continuous using quantics grid
 
 ```{eval-rst}
 

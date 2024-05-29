@@ -1,4 +1,4 @@
-# Factorize a continuous function using natural grid
+# Factorize a function on the continuous using natural grid
 
 ```{eval-rst}
 

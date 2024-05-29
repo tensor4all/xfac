@@ -13,6 +13,7 @@ parts:
 #  - file: markdown-notebooks
 - caption: c++ API
   chapters:
+  - file: api/intro-api
   - file: api/api1
   - file: api/api2
   - file: api/api3
