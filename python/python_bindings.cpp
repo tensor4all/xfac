@@ -190,7 +190,7 @@ PYBIND11_MODULE(xfacpy, m) {
 
     using grid::Quantics;
     py::class_<Quantics>(m,"QuanticsGrid")
-            .def(py::init<double,double,int,int,bool>(), "a"_a=0,"b"_a=1,"nBit"_a=10,"dim"_a=1,"pack"_a=false)
+            .def(py::init<double,double,int,int,bool>(), "a"_a=0,"b"_a=1,"nBit"_a=10,"dim"_a=1,"fused"_a=false)
             .def_readonly("deltaX",&Quantics::deltaX)
             .def_readonly("deltaVolume",&Quantics::deltaVolume)
             .def_readonly("tensorLen",&Quantics::tensorLen)

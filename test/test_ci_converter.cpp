@@ -123,9 +123,9 @@ TEST_CASE("global pivot")
 TEST_CASE("quantics 1s orbital")
 {
     auto ft=[](double x, double y, double z){ return exp(-sqrt(x*x+y*y+z*z)); };
-    auto packed=GENERATE(false,true);
-    int ms[2]={105,75};  // bond dimension depending on packed
-    grid::Quantics grid {-40, 40, 30, 3, packed};
+    auto fused=GENERATE(false,true);
+    int ms[2]={105,75};  // bond dimension depending on fused
+    grid::Quantics grid {-40, 40, 30, 3, fused};
     auto weight=GENERATE_COPY(vector<vector<double>>{},
                               vector(grid.tensorLen,vector(grid.tensorLocDim,1.0)));
     auto fq=[&](const vector<int>& id) { auto r=grid.id_to_coord(id); return ft(r[0],r[1],r[2]); };
@@ -137,12 +137,12 @@ TEST_CASE("quantics 1s orbital")
                 pivots.push_back(grid.coord_to_id({x,y,z}));
 
     auto ci=TensorCI2<double>(fq,vector(grid.tensorLen,grid.tensorLocDim),
-                              {.bondDim=ms[packed], .reltol=1e-7, .pivot1=pivots[0], .fullPiv=!packed,
+                              {.bondDim=ms[fused], .reltol=1e-7, .pivot1=pivots[0], .fullPiv=!fused,
                                .weight=weight,
                                .useCachedFunction=false});
     ci.addPivotsAllBonds(pivots);
     double error=1;
-    DYNAMIC_SECTION("tci2 packed="<<packed<<" weight="<<!weight.empty()) {
+    DYNAMIC_SECTION("tci2 fused="<<fused<<" weight="<<!weight.empty()) {
         while (ci.cIter<6 && std::abs(error)>2e-5) {
             ci.iterate();
             error=ci.tt.sum1()*grid.deltaVolume/(8*M_PI)-1;
@@ -153,7 +153,7 @@ TEST_CASE("quantics 1s orbital")
         cout<<"integral/exact-1="<<error<<endl;
         REQUIRE(std::abs(error)<2e-5);
     }
-    DYNAMIC_SECTION("tci1 packed="<<packed<<" weight="<<!weight.empty()) {
+    DYNAMIC_SECTION("tci1 fused="<<fused<<" weight="<<!weight.empty()) {
         ci.makeCanonical();
         auto ci1=to_tci1(ci);
         while (ci1.cIter<ci.param.bondDim && std::abs(error)>2e-5) {

@@ -69,12 +69,12 @@ struct Quantics {
     int tensorLen;
     int tensorLocDim;
 
-    Quantics(double a_=0, double b_=1, int nBit_=10, int dim_=1, bool pack_=false)
+    Quantics(double a_=0, double b_=1, int nBit_=10, int dim_=1, bool fused_=false)
         : a(a_)
         , b(b_)
         , nBit(nBit_)
         , dim(dim_)
-        , fused(pack_)
+        , fused(fused_)
         , deltaX( (b-a)/(1ull<<nBit) )
         , deltaVolume( pow(deltaX,dim) )
         , tensorLen( fused ? nBit : nBit*dim )
