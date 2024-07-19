@@ -39,5 +39,8 @@ TEST_CASE( "Test tree" )
             cout<<endl;
         }
 
+        auto [s0, s1] = tree.split(1, 3);
+        std::cout << "s0= " << s0 <<  "\n";
+        std::cout << "s1= " << s1 <<  "\n";
     }
 }
