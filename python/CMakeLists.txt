@@ -4,3 +4,5 @@ pybind11_add_module(${PROJECT_NAME}py
 target_link_libraries(${PROJECT_NAME}py PUBLIC ${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME}py PUBLIC carma::carma)
+
+target_link_libraries(${PROJECT_NAME}py PRIVATE -static-libgcc -static-libstdc++)
