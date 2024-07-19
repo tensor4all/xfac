@@ -6,6 +6,7 @@ add_executable(${PROJECT_NAME}_test
     test_tensor_ci_2.cpp
     test_timing.cpp
     test_ci_converter.cpp
+    test_tree.cpp
 )
 
 target_include_directories(${PROJECT_NAME}_test INTERFACE Catch2::Catch2)
