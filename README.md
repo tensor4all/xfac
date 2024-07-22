@@ -134,6 +134,9 @@ target_link_library(myTarget xfac::xfac)
 ```
 Notice that the manual copy can be automatized by adding `xfac` as a `git submodule` or using `cmake FetchContent`.
 
+#### Jupyter notebook and conda environment
+
+If you have problems using the Jupyter notebook with the conda environment, see this [PR#7](https://github.com/tensor4all/xfac/pull/7).
 
 ## Building the documentation locally
 
