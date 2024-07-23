@@ -48,6 +48,14 @@ public:
         return out;
     }
 
+    /// return pair of nodes {from,to}
+    std::vector<std::pair<int,int>> pathLeavesToRoot(int root=0)
+    {
+        std::vector<std::pair<int,int>> out;
+        impl_leaves_to_root(out,root);
+        return out;
+    }
+
     /// split tree at connecting edge between node0 and node1 and return the nodes of the two subtrees
     std::pair<std::set<int>, std::set<int>> split(int node0, int node1)
     {
@@ -70,6 +78,13 @@ public:
         for ( auto n: neigh.at(nodeid) )
             if (n!=parent) impl_walk_depth_first(path, n, nodeid);
         if (parent!=-1) path.push_back(parent);
+    }
+
+    void impl_leaves_to_root(std::vector<std::pair<int,int>>& path, int nodeid, int parent=-1) const
+    {
+        for ( auto n: neigh.at(nodeid) )
+            if (n!=parent) impl_leaves_to_root(path, n, nodeid);
+        if (parent!=-1) path.push_back({nodeid,parent});
     }
 };
 
