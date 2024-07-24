@@ -23,7 +23,8 @@ set(header
     include/xfac/tensor/auto_mpo.h
     include/xfac/tensor/tensor_ci_converter.h
     include/xfac/grid.h
-    include/xfac/tree/tree.h
+    include/xfac/tree/tree.h    
+    include/xfac/tree/tensor_tree.h
 )
 
 add_library(${PROJECT_NAME} STATIC
