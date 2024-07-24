@@ -38,7 +38,7 @@ public:
     }
 
     /// return pair of nodes {from,to}
-    std::vector<std::pair<int,int>> pathDepthFirst(int root=0)
+    std::vector<std::pair<int,int>> pathDepthFirst(int root=0) const
     {
         std::vector<int> path;
         impl_walk_depth_first(path,root);
@@ -49,7 +49,7 @@ public:
     }
 
     /// return pair of nodes {from,to}
-    std::vector<std::pair<int,int>> pathLeavesToRoot(int root=0)
+    std::vector<std::pair<int,int>> pathLeavesToRoot(int root=0) const
     {
         std::vector<std::pair<int,int>> out;
         impl_leaves_to_root(out,root);
@@ -57,9 +57,9 @@ public:
     }
 
     /// split tree at connecting edge between node0 and node1 and return the nodes of the two subtrees
-    std::pair<std::set<int>, std::set<int>> split(int node0, int node1)
+    std::pair<std::set<int>, std::set<int>> split(int node0, int node1) const
     {
-        if (!(neigh[node0].find(node1) != neigh[node0].end())) throw std::invalid_argument("Tree::split node0 and node1 are not neighbors");
+        if (!(neigh.at(node0).find(node1) != neigh.at(node0).end())) throw std::invalid_argument("Tree::split node0 and node1 are not neighbors");
         std::vector<int> path0, path1;
         impl_walk_depth_first(path0, node0, node1); 
         impl_walk_depth_first(path1, node1, node0);
