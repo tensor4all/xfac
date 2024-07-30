@@ -122,6 +122,71 @@ struct Quantics {
 
 };
 
+
+struct QuanticsX {
+    vector<double> a, b;
+    int nBit=10;
+    int dim=1;
+    bool pack=false;
+
+    vector<double> deltaX;
+    double deltaVolume;
+    int tensorLen;
+    int tensorLocDim;
+
+    QuanticsX(double a_=0, double b_=1, int nBit_=10, int dim_=1, bool pack_=false)
+        : QuanticsX(vector<double>(a_, dim), vector<double>(b_, dim), nBit_, pack_)
+    {}
+
+    QuanticsX(vector<double> a_, vector<double> b_, int nBit_=10, bool pack_=false)
+        : a(a_)
+        , b(b_)
+        , nBit(nBit_)
+        , dim(a_.size())
+        , pack(pack_)
+        , tensorLen( pack ? nBit : nBit*dim )
+        , tensorLocDim( pack ? 1<<dim : 2 )
+    { 
+        assert(nBit<64); 
+        assert(a.size()==b.size());
+        size_t n = 1ull<<nBit;
+        deltaVolume = 1;
+        for(auto i=0u; i<dim; i++) {
+            deltaX.push_back( (b[i] - a[i]) / n);
+            deltaVolume *= deltaX[i];
+        }    
+    }
+
+    vector<int> tensorDims() const { return vector(tensorLen, tensorLocDim); }
+
+    vector<int> coord_to_id(vector<double> const& us) const
+    {
+        assert(dim==us.size());
+        vector<int> id(tensorLen,0);
+        for(auto i=0u; i<us.size(); i++) {
+            std::bitset<64> bi=(us[i]-a[i])/deltaX[i];
+            for(auto d=0; d<nBit; d++)
+                if (pack) id[d] |= (bi[d]<<i);
+                else id[i+d*dim]=bi[d];
+        }
+        return id;
+    }
+
+    vector<double> id_to_coord(vector<int> const& id) const
+    {
+        assert(tensorLen==id.size());
+        vector<double> us(dim);
+        for(auto i=0; i<dim; i++) {
+            std::bitset<64> bi;
+            for(auto d=0; d<nBit; d++)
+                if (pack) bi[d]=id[d] & (1<<i);
+                else bi[d]=id[i+d*dim];
+            us[i]=a[i]+deltaX[i]*bi.to_ullong();
+        }
+        return us;
+    }
+};
+
 } // end namespace grid
 } // end namespace xfac
 
