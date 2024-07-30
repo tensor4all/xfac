@@ -7,6 +7,7 @@ using namespace arma;
 using namespace xfac;
 
 using cmpx=std::complex<double>;
+using uint = unsigned int;
 
 TEST_CASE( "Test MatrixCI" )
 {

@@ -111,7 +111,7 @@ struct Quantics {
         return us;
     }
 
-    void save(std::ostream &out) const { out<<a<<" "<<b<<" "<<nBit<<" "<<dim<<" "<<fused<<std::endl; }
+    void save(std::ostream &out) const { out<<std::setprecision(18)<<a<<" "<<b<<" "<<nBit<<" "<<dim<<" "<<fused<<std::endl; }
 
     static Quantics load(std::istream& in)
     {
