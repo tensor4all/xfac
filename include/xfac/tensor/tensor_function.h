@@ -21,7 +21,7 @@ struct TensorFunction {
 
     TensorFunction(function<T(vector<int>)> f_, bool useCache_=false) : f(f_), useCache(useCache_) {}
 
-    T operator()(MultiIndex const& id) const { return f({id.begin(),id.end()}); }
+    T operator()(MultiIndex const& id) const { cEval+=1; return f({id.begin(),id.end()}); }
 
     arma::Mat<T> evalCache(vector<MultiIndex> const& I, vector<MultiIndex> const& J) const
     {
