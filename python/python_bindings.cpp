@@ -62,9 +62,9 @@ void declare_TensorCI(py::module &m, std::string typestr) {
     py::class_<TensorCI1d>(m, ("TensorCI1"s+typestr).c_str())
             .def_readwrite("param", &TensorCI1d::param)
             .def_readwrite("pivotError", &TensorCI1d::pivotError)
-            .def_readonly("Iset", &TensorCI1d::Iset)
-            .def_readonly("localSet", &TensorCI1d::localSet)
-            .def_readonly("Jset", &TensorCI1d::Jset)
+            .def("getIset", [](TensorCI1d const& ci) { return multiIndex_as_vec(ci.Iset); })
+            .def("getLocalSet", [](TensorCI1d const& ci) { return multiIndex_as_vec(ci.localSet); })
+            .def("getJset", [](TensorCI1d const& ci) { return multiIndex_as_vec(ci.Jset); })
             .def_readonly("T3", &TensorCI1d::T3)
             .def_readonly("P", &TensorCI1d::P)
             .def_readonly("cIter", &TensorCI1d::cIter)
@@ -82,9 +82,9 @@ void declare_TensorCI(py::module &m, std::string typestr) {
     py::class_<TensorCI2d>(m, ("TensorCI2"s+typestr).c_str())
             .def_readwrite("param", &TensorCI2d::param)
             .def_readwrite("pivotError", &TensorCI2d::pivotError)
-            .def_readonly("Iset", &TensorCI2d::Iset)
-            .def_readonly("localSet", &TensorCI2d::localSet)
-            .def_readonly("Jset", &TensorCI2d::Jset)
+            .def("getIset", [](TensorCI2d const& ci) { return multiIndex_as_vec(ci.Iset); })
+            .def("getLocalSet", [](TensorCI2d const& ci) { return multiIndex_as_vec(ci.localSet); })
+            .def("getJset", [](TensorCI2d const& ci) { return multiIndex_as_vec(ci.Jset); })
             .def_readonly("tt", &TensorCI2d::tt, "the tensor train")
             .def_readonly("P", &TensorCI2d::P, "the pivot matrix in LU form for each bond")
             .def_readonly("cIter", &TensorCI2d::cIter)
@@ -141,12 +141,12 @@ void declare_TensorCI(py::module &m, std::string typestr) {
 
     // tci1 <---> tci2 conversion
     m.def("to_tci1", &xfac::to_tci1<T>, "tci2"_a);
-
     m.def("to_tci2", py::overload_cast<const TensorCI1d&,tensorF,TensorCI2Param>(&xfac::to_tci2<T>), "tci1"_a, "g"_a, "param"_a);
     m.def("to_tci2", py::overload_cast<const TensorCI1d&,tensorF>(&xfac::to_tci2<T>), "tci1"_a, "g"_a);
     m.def("to_tci2", py::overload_cast<const TensorCI1d&,TensorCI2Param>(&xfac::to_tci2<T>), "tci1"_a, "param"_a);
     m.def("to_tci2", py::overload_cast<const TensorCI1d&>(&xfac::to_tci2<T>), "tci1"_a);
 }
+
 
 PYBIND11_MODULE(xfacpy, m) {
     m.doc() = "Python interface for tensor train cross interpolation (xfac)";
@@ -157,6 +157,7 @@ PYBIND11_MODULE(xfacpy, m) {
         return py::make_iterator(v.begin(), v.end());
     }, py::keep_alive<0, 1>()) /* Keep vector alive while iterator is used */
             ;
+
 
 
     py::class_<TensorCI1Param>(m,"TensorCI1Param")
