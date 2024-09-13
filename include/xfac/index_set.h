@@ -92,6 +92,28 @@ using MultiIndex=std::u32string ;
 template<class T>
 using MultiIndexG=std::basic_string<T> ;
 
+inline vector<int> multiIndex_as_vec(MultiIndex const& mi) { return vector<int> {mi.begin(), mi.end()}; }
+
+inline vector<vector<int>> multiIndex_as_vec(vector<MultiIndex> const& Iset)
+{
+    vector<vector<int>> out;
+    for(const auto& mi:Iset)
+        out.push_back(multiIndex_as_vec(mi));
+    return out;
+}
+
+inline vector<vector<vector<int>>> multiIndex_as_vec(vector<vector<MultiIndex>> const& Iset)
+{
+    vector<vector<vector<int>>> out;
+    for(const auto& mi:Iset)
+        out.push_back(multiIndex_as_vec(mi));
+    return out;
+}
+
+inline vector<vector<vector<int>>> multiIndex_as_vec(vector<IndexSet<MultiIndex>> const& Iset)
+{
+    return multiIndex_as_vec(vector<vector<MultiIndex>> {Iset.begin(), Iset.end()}) ;
+}
 
 inline vector<MultiIndex> kron( vector<MultiIndex> const& I1,vector<MultiIndex> const& I2)
 {
