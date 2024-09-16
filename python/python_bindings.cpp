@@ -124,7 +124,9 @@ void declare_TensorCI(py::module &m, std::string typestr) {
     py::class_<CTensorCI2d,TensorCI2d>(m, ("CTensorCI2"s+typestr).c_str())
             .def(py::init<ctensorF,vector<vector<double>>,TensorCI2Param>(), "f"_a, "xi"_a, "args"_a=TensorCI2Param())
             .def("get_CTensorTrain", &CTensorCI2d::get_CTensorTrain)
-            .def("get_T_at", &CTensorCI2d::get_T_at)
+            .def("get_T_at", &CTensorCI2d::get_T_at, "bond"_a, "x"_a)
+            .def("get_TP1_at", &CTensorCI2d::get_TP1_at, "bond"_a, "x"_a)
+            .def("get_P1T_at", &CTensorCI2d::get_P1T_at, "bond"_a, "x"_a)
             ;
 
     using QTensorCId=QTensorCI<T>;
