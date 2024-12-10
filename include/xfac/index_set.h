@@ -90,7 +90,7 @@ public:
 
 using MultiIndex=std::u32string ;
 template<class T>
-using MultiIndexG=std::basic_string<T> ;
+using MultiIndexG=std::vector<T> ;
 
 inline vector<int> multiIndex_as_vec(MultiIndex const& mi) { return vector<int> {mi.begin(), mi.end()}; }
 

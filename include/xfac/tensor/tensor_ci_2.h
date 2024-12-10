@@ -336,12 +336,17 @@ public:
     arma::Mat<T> get_T_at(size_t p, Index x) const {
         auto Ip=to_MultiIndexG<Index>(this->Iset.at(p), xi);
         auto Jp=to_MultiIndexG<Index>(this->Jset.at(p), {xi.begin()+p+1, xi.end()} );  // because Jset[p] start at pos p+1
+        vector<Index> ixj(this->len());
         arma::Mat<T> T2(Ip.size(), Jp.size());
-        for(auto i=0u; i<T2.n_rows; i++)
+        for(auto i=0u; i<T2.n_rows; i++) {
+            std::copy(Ip[i].begin(),Ip[i].end(),ixj.begin());
+            ixj[Ip[i].size()]=x;
             for(auto j=0u; j<T2.n_cols; j++) {
-                auto ixj=Ip[i]+x+Jp[j];
-                T2(i,j)=fc({ixj.begin(), ixj.end()});
+                // auto ixj=Ip[i]+x+Jp[j];
+                std::copy(Jp[j].begin(),Jp[j].end(),ixj.begin()+Ip[i].size()+1);
+                T2(i,j)=fc(ixj);
             }
+        }
         return T2;
     }
 
