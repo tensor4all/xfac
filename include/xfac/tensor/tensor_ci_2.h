@@ -79,8 +79,8 @@ struct TensorCI2 {
     {}
 
     /// constructs a TensorCI2 from a given tensor train, and using the provided function f.
-    TensorCI2(function<T(vector<int>)> f_, TensorTrain<T> tt_, TensorCI2Param param_={})
-        : f {f_, param_.useCachedFunction}
+    TensorCI2(TensorFunction<T> const& f_, TensorTrain<T> tt_, TensorCI2Param param_={})
+        : f {f_}
         , param(param_)
         , pivotError(1)
         , Iset {tt_.M.size()}
@@ -123,6 +123,11 @@ struct TensorCI2 {
         }
         iterate(1,0); // just to define tt, while reevaluating the original f in the pivots.
     }
+
+    /// constructs a TensorCI2 from a given tensor train, and using the provided function f.
+    TensorCI2(function<T(vector<int>)> f_, TensorTrain<T> tt_, TensorCI2Param param_={})
+        : TensorCI2(TensorFunction<T> {f_, param_.useCachedFunction}, tt_, param_)
+    {}
 
     /// constructs a TensorCI2 from a given tensor train. It takes the tt as a true function f.
     TensorCI2(TensorTrain<T> const& tt_, TensorCI2Param param_={}) : TensorCI2(tt_, tt_, param_) {}
@@ -387,6 +392,8 @@ class QTensorCI: public TensorCI2<T> {
 public:
     grid::Quantics grid;
 
+    QTensorCI() = default;
+
     /// constructs a rank-1 QTensorCI from a function f:(u1,u2,...,un)->T  and the given quantics grid
     QTensorCI(function<T(vector<double>)> f_, grid::Quantics grid_, TensorCI2Param par={})
         : TensorCI2<T> {tensorFun(f_,grid_), grid_.tensorDims(), par}
@@ -396,6 +403,12 @@ public:
     /// constructs a rank-1 QTensorCI from a function f:(u1)->T and the given quantics grid. Specialization for the 1d case.
     QTensorCI(function<T(double)> f_, grid::Quantics grid_, TensorCI2Param par={})
         : TensorCI2<T> {tensorFun(f_,grid_), grid_.tensorDims(), par}
+        , grid {grid_}
+    {}
+
+    /// constructs a rank-1 QTensorCI from a function f:(u1,u2,...,un)->T, a tensor train and the given quantics grid
+    QTensorCI(function<T(vector<double>)> f_, grid::Quantics grid_, TensorTrain<T> tt_, TensorCI2Param par={})
+        : TensorCI2<T> {tensorFun(f_,grid_), tt_, par}
         , grid {grid_}
     {}
 
