@@ -121,7 +121,12 @@ struct TensorTrain {
             Mi.load(in,arma::arma_ascii);
         return tt;
     }
-    static TensorTrain<T> load(std::string fileName) { std::ifstream in(fileName); return load(in); }
+    static TensorTrain<T> load(std::string fileName)
+    {
+        std::ifstream in(fileName);
+        if (in.fail()) throw std::runtime_error("TensorTrain::load fails to load file: " + fileName);
+        return load(in);
+    }
 
     /// for developers
     void sweep(function<array<arma::Mat<T>,2>(arma::Mat<T>,bool)> mat_decomp)
@@ -256,7 +261,12 @@ struct QTensorTrain {
     void save(std::string fileName) const { std::ofstream out(fileName); save(out); }
 
     static QTensorTrain<T> load(std::ifstream& in) { return {TensorTrain<T>::load(in), grid::Quantics::load(in)}; }
-    static QTensorTrain<T> load(std::string fileName) { std::ifstream in(fileName); return load(in); }
+    static QTensorTrain<T> load(std::string fileName)
+    {
+        std::ifstream in(fileName);
+        if (in.fail()) throw std::runtime_error("QTensorTrain::load fails to load file: " + fileName);
+        return load(in);
+    }
 };
 
 
