@@ -392,8 +392,6 @@ class QTensorCI: public TensorCI2<T> {
 public:
     grid::Quantics grid;
 
-    QTensorCI() = default;
-
     /// constructs a rank-1 QTensorCI from a function f:(u1,u2,...,un)->T  and the given quantics grid
     QTensorCI(function<T(vector<double>)> f_, grid::Quantics grid_, TensorCI2Param par={})
         : TensorCI2<T> {tensorFun(f_,grid_), grid_.tensorDims(), par}

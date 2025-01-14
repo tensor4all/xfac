@@ -143,6 +143,23 @@ TEST_CASE("quantics 2")
         cout << "true error=" << ci.trueError(1<<ci.grid.nBit) << "\n";
     }
 
+    SECTION( "restart from tensor train" )
+    {
+        function f2=[&](double x) { return pow(x+0.1,5)+pow(x-0.5,4); };
+        auto exact = pow(1.1,6)/6-pow(0.1,6)/6 + pow(0.5,5)/5+pow(0.5,5)/5;
+
+        map<double,double> cache;
+        auto f=[&](vector<double> y) { double x = y[0]; return cache[x]=f2(x); };
+
+        auto ci=QTensorCI<double>(f, grid::Quantics {0.0, 1.0, 30}, {.bondDim=20, .useCachedFunction=true});
+        ci.iterate(3);
+
+        auto ci_2=QTensorCI<double>(f, grid::Quantics {0.0, 1.0, 30}, ci.get_qtt().tt, {.bondDim=20, .useCachedFunction=true});
+        ci_2.iterate();
+        auto res = ci_2.get_qtt().integral();
+        REQUIRE(std::abs(res - exact)<1e-9);
+    }
+
     SECTION( "copy pivots quantics" )
     {
         function f2=[&](double x) { return pow(x+0.1,5)+pow(x-0.5,4); };
