@@ -404,7 +404,7 @@ public:
         , grid {grid_}
     {}
 
-    /// constructs a rank-1 QTensorCI from a function f:(u1,u2,...,un)->T, a tensor train and the given quantics grid
+    /// constructs a QTensorCI from a function f:(u1,u2,...,un)->T, a tensor train and the given quantics grid
     QTensorCI(function<T(vector<double>)> f_, grid::Quantics grid_, TensorTrain<T> tt_, TensorCI2Param par={})
         : TensorCI2<T> {tensorFun(f_,grid_), tt_, par}
         , grid {grid_}

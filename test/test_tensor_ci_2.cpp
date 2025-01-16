@@ -155,9 +155,26 @@ TEST_CASE("quantics 2")
         ci.iterate(3);
 
         auto ci_2=QTensorCI<double>(f, grid::Quantics {0.0, 1.0, 30}, ci.get_qtt().tt, {.bondDim=20, .useCachedFunction=true});
-        ci_2.iterate();
+        //ci_2.iterate();
         auto res = ci_2.get_qtt().integral();
         REQUIRE(std::abs(res - exact)<1e-9);
+    }
+
+    SECTION( "restart from tensor train complex" )
+    {
+        function f2=[&](double x) { return pow(x+0.1,5)+pow(x-0.5,4); };
+        auto exact = pow(1.1,6)/6-pow(0.1,6)/6 + pow(0.5,5)/5+pow(0.5,5)/5;
+
+        auto f=[&](vector<double> y) { return cmpx(f2(y[0]),f2(y[1])); };
+
+        auto ci=QTensorCI<cmpx>(f, grid::Quantics {0.0, 1.0, 40, 2, true});
+        ci.iterate(5);
+        ci.get_qtt().save("my_qtt.dat");
+
+        auto qtt=QTensorTrain<cmpx>::load("my_qtt.dat");
+        auto ci_2=QTensorCI<cmpx>(f, qtt.grid, qtt.tt);
+        auto res = ci_2.get_qtt().integral();
+        REQUIRE(std::abs(res - cmpx(exact,exact))<1e-9);
     }
 
     SECTION( "copy pivots quantics" )
