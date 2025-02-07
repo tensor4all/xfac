@@ -89,7 +89,7 @@ struct Quantics {
         assert(dim==us.size());
         vector<int> id(tensorLen,0);
         for(auto i=0u; i<us.size(); i++) {
-            std::bitset<64> bi=(us[i]-a)/deltaX;
+            std::bitset<64> bi=round((us[i]-a)/deltaX);
             for(auto d=0; d<nBit; d++)
                 if (fused) id[d] |= (bi[d]<<i);
                 else id[i+d*dim]=bi[d];
