@@ -31,7 +31,7 @@ arma::Cube<T> cube_vec(arma::Cube<T> const& M, arma::Col<T> v, int cube_pos)
 template<class T>
 struct TensorTree {
     vector< arma::Cube<T> >  M;   ///< list of 3-leg tensors
-    Tree<bool> tree;              ///< a tree that stores which nodes have physical leg
+    OrderedTree<bool> tree;       ///< a tree that stores which nodes have physical leg
 
     TensorTree()=default;
     TensorTree(size_t len) : M(len) {}  //TODO: initialize the tree!
@@ -43,7 +43,7 @@ struct TensorTree {
         auto prod=M; // a copy
         for(auto [k,_]: tree.nodes)
                 prod[k]=cube_eval(M[k],id[k]);
-        for(auto [from,to]:tree.pathLeavesToRoot()) {
+        for(auto [from,to]:tree.leavesToRoot()) {
             arma::Col<T> v=arma::vectorise(prod[from]);
             int pos=0;
             for(auto n : tree.neigh.at(to)) {
