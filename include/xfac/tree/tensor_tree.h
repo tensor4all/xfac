@@ -41,16 +41,12 @@ struct TensorTree {
     {
         if (id.size()!=M.size()) throw std::invalid_argument("TensorTrain::() id.size()!=size()");
         auto prod=M; // a copy
-        for(auto [k,_]: tree.nodes)
-                prod[k]=cube_eval(M[k],id[k]);
+        for(auto k:tree.nodes)
+            prod[k]=cube_eval(M[k],id[k]);
         for(auto [from,to]:tree.leavesToRoot()) {
             arma::Col<T> v=arma::vectorise(prod[from]);
-            int pos=0;
-            for(auto n : tree.neigh.at(to)) {
-                if (n==from)
-                    prod[to]=cube_vec(prod[to],v,pos);
-                pos++;
-            }
+            int pos=tree.neigh.at(to).pos(from);
+            prod[to]=cube_vec(prod[to],v,pos);
         }
         return arma::vectorise(prod[0])(0);
     }

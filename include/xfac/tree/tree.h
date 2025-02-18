@@ -1,6 +1,7 @@
 #ifndef TREE_H
 #define TREE_H
 
+#include "xfac/index_set.h"
 #include <vector>
 #include <map>
 #include <set>
@@ -17,9 +18,9 @@ namespace xfac {
 template<class T>
 class Tree {
 public:
-    std::map<int, T> nodes;  // nodes appear only in this map when they contain data
-    std::map<std::pair<int,int>,T> edges;  // edges appear only in this map when they contain data
-    std::map<int, std::set<int> > neigh;
+    std::set<int> nodes;  // nodes appear only in this map when they contain data
+    //std::map<std::pair<int,int>,T> edges;  // edges appear only in this map when they contain data
+    std::map<int, IndexSet<int> > neigh;
 
     Tree(){}
 
@@ -28,14 +29,14 @@ public:
     void addEdge(int from, int to, T data)
     {
         addEdge(from, to);
-        edges[{from,to}]=data;
+        //edges[{from,to}]=data;
     }
 
     void addEdge(int from, int to)
     {
         if (from==to) throw std::invalid_argument("Tree::addEdge wrong node indices");
-        neigh[from].insert(to);
-        neigh[to].insert(from);
+        neigh[from].push_back(to);
+        neigh[to].push_back(from);
     }
 
     /// return pair of nodes {from,to} with ordering: root -> leaves
@@ -47,7 +48,8 @@ public:
     /// split tree at connecting edge between node0 and node1 and return the nodes of the two subtrees
     std::pair<std::set<int>, std::set<int>> split(int node0, int node1) const
     {
-        if (!(neigh.at(node0).find(node1) != neigh.at(node0).end())) throw std::invalid_argument("Tree::split node0 and node1 are not neighbors");
+        if (!(neigh.at(node0).to_int().find(node1) != neigh.at(node0).to_int().end()))
+            throw std::invalid_argument("Tree::split node0 and node1 are not neighbors");
         std::set<int> s0, s1;
         s0.insert(node0);
         s1.insert(node1);
@@ -120,7 +122,6 @@ public:
     }
 
 };
-
 
 } // end namespace xfac
 
