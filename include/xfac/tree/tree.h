@@ -15,22 +15,14 @@ namespace xfac {
 
 
 
-template<class T>
 class Tree {
 public:
-    std::set<int> nodes;  // nodes appear only in this map when they contain data
-    //std::map<std::pair<int,int>,T> edges;  // edges appear only in this map when they contain data
-    std::map<int, IndexSet<int> > neigh;
+    std::set<int> nodes;                  // only the physical nodes appear in this set
+    std::map<int, IndexSet<int> > neigh;  // mapping from a node index to a set of its neighbors and their respective ordering
 
     Tree(){}
 
     std::size_t size() const { return neigh.size(); }
-
-    void addEdge(int from, int to, T data)
-    {
-        addEdge(from, to);
-        //edges[{from,to}]=data;
-    }
 
     void addEdge(int from, int to)
     {
@@ -69,21 +61,12 @@ public:
         for (auto [from, to] : rootToLeaves(root)) {
             connectedNodes.insert(to);
         }
-        bool graph_connected = connectedNodes.size() == size() ? true : false;
-        bool nodes_inside_tree = true;
-        for (auto [node, _] : nodes) {
-            if (!connectedNodes.contains(node)){
-                nodes_inside_tree = false;
-                break;
-            }
-        }
-        return graph_connected && nodes_inside_tree;
+        return connectedNodes.size() == size() ? true : false;
     }
 };
 
 
-template<class T>
-class OrderedTree: public Tree<T> {
+class OrderedTree: public Tree {
 public:
 
     std::vector<std::pair<int,int>> rootToLeaves(int root=0) const
@@ -109,19 +92,56 @@ public:
     void walk_depth_first(std::vector<int>& path, int nodeid, int parent=-1) const
     {
         path.push_back(nodeid);
-        for ( auto n: this -> neigh.at(nodeid) )
+        for ( auto n: this -> neigh.at(nodeid).from_int() )
             if (n!=parent) walk_depth_first(path, n, nodeid);
         if (parent!=-1) path.push_back(parent);
     }
 
     void leaves_to_root(std::vector<std::pair<int,int>>& path, int nodeid, int parent=-1) const
     {
-        for ( auto n: this -> neigh.at(nodeid) )
+        for ( auto n: this -> neigh.at(nodeid).from_int() )
             if (n!=parent) leaves_to_root(path, n, nodeid);
         if (parent!=-1) path.push_back({nodeid,parent});
     }
 
 };
+
+OrderedTree makeTuckerTree(int dim, int nBit){
+    /*
+     *  Return a Tucker tree.
+     *  Index convention example for dim = 4, nBit = 2
+     *  x: physical node (given by dim), o: quantics node (given by nBit)
+     * 
+     *   8     9     10    11
+     *   x --- x --- x --- x
+     *   |     |     |     |
+     *   o 1   o 3   o 5   o 7
+     *   |     |     |     |
+     *   o 0   o 2   o 4   o 6  
+     *
+     */
+
+    OrderedTree tree;
+
+    // vertical connections between quantics nodes
+    for(int i=0; i<dim; i++)
+        for(int j=0; j<nBit-1; j++)
+            tree.addEdge(i * nBit + j, i * nBit + j + 1);
+
+    // vertical connections between quantics nodes and physical nodes
+    for(int i=0; i<dim; i++)
+        tree.addEdge(i * nBit + 1, dim * nBit + i);
+
+    // horizontal connection between physical nodes
+    for(int i=dim * nBit; i<dim * (nBit + 1) - 1; i++)
+        tree.addEdge(i, i + 1);
+
+    // set physical nodes
+    for(int i=dim * nBit; i<(dim + 1) * nBit; i++)
+        tree.nodes.insert(i);
+
+    return tree;
+}
 
 } // end namespace xfac
 
