@@ -82,19 +82,23 @@ TEST_CASE( "Test tree" )
     SECTION( "tucker tree" )
     {
         cout<<"tucker tree\n";
-        int dim = 4;
-        int nBits = 2;
-        tree = makeTuckerTree(dim, nBits);
 
-        // print tree
-        std::set<int> visitedNodes;
-        for (auto [from,to]:tree.rootToLeaves()) {
-            if (!visitedNodes.contains(from)){
-                std::cout << from << " " << to;
-                for (auto n:tree.neigh[from].from_int())
-                    if (n!=to) cout<<" "<< n;
-                cout<<endl;
-                visitedNodes.insert(from);
+        for( auto [dim, nBits]: vector<pair<int,int>> {{3,1}, {4,2}, {6,3}}){
+
+            std::cout << "make Tucker tree: dim= " << dim << " , nBits= " << nBits <<  "\n";
+            tree = makeTuckerTree(dim, nBits);
+            assert(tree.isTree());
+
+            // print tree
+            std::set<int> visitedNodes;
+            for (auto [from,to]:tree.rootToLeaves()) {
+                if (!visitedNodes.contains(from)){
+                    std::cout << from << " " << to;
+                    for (auto n:tree.neigh[from].from_int())
+                        if (n!=to) cout<<" "<< n;
+                    cout<<endl;
+                    visitedNodes.insert(from);
+                }
             }
         }
 

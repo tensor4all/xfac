@@ -111,10 +111,11 @@ OrderedTree makeTuckerTree(int dim, int nBit){
      *  Return a Tucker tree.
      *  Index convention example for dim = 4, nBit = 2
      *  x: physical node (given by dim), o: quantics node (given by nBit)
+     *  the left and right corners of the physical nodes (having formally index 8 and 11), are missing
      * 
-     *   8     9     10    11
-     *   x --- x --- x --- x
-     *   |     |     |     |
+     *         9     10
+     *     --- x --- x --
+     *    /    |     |    \
      *   o 1   o 3   o 5   o 7
      *   |     |     |     |
      *   o 0   o 2   o 4   o 6  
@@ -123,25 +124,33 @@ OrderedTree makeTuckerTree(int dim, int nBit){
 
     OrderedTree tree;
 
+    if (dim < 3 || nBit < 1)
+        throw std::invalid_argument("makeTuckerTree: require dim >= 3 and nBit > 0");
+
     // vertical connections between quantics nodes
     for(int i=0; i<dim; i++)
         for(int j=0; j<nBit-1; j++)
             tree.addEdge(i * nBit + j, i * nBit + j + 1);
 
-    // vertical connections between quantics nodes and physical nodes
-    for(int i=0; i<dim; i++)
-        tree.addEdge(i * nBit + 1, dim * nBit + i);
+    // vertical connections between quantics nodes and physical nodes (exclude leftmost and rightmost)
+    for(int i=1; i<dim - 1; i++)
+        tree.addEdge((i + 1) * nBit - 1, dim * nBit + i);
+
+    // leftmost and rightmost vertical connections between quantics nodes and physical nodes
+    tree.addEdge(nBit - 1, dim * nBit + 1);
+    tree.addEdge(dim * nBit - 1, (nBit + 1) * dim - 2);
 
     // horizontal connection between physical nodes
-    for(int i=dim * nBit; i<dim * (nBit + 1) - 1; i++)
+    for(int i=dim * nBit + 1; i<dim * (nBit + 1) - 2; i++)
         tree.addEdge(i, i + 1);
 
     // set physical nodes
-    for(int i=dim * nBit; i<(dim + 1) * nBit; i++)
+    for(int i=dim * nBit + 1; i<dim * (nBit + 1) - 1; i++)
         tree.nodes.insert(i);
 
     return tree;
 }
+
 
 } // end namespace xfac
 
