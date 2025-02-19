@@ -3,6 +3,7 @@
 #include<iostream>
 #include <cassert>
 #include "xfac/tree/tree.h"
+#include "xfac/grid.h"
 
 /// Overload outstream to write vectors of numbers to the console
 template< typename T >
@@ -101,6 +102,26 @@ TEST_CASE( "Test tree" )
                 }
             }
         }
+    }
+
+    SECTION( "quantics tree grid" )
+    {
+        cout<<"quantics tree grid\n";
+
+        int dim=3;
+        int nBits=2;
+        auto grid = xfac::grid::QuanticsTree(0., 1., nBits, dim);
+
+        for (auto i0 : {0, 1}){
+            for (auto j0 : {0, 1}){
+                cout << "i=" << i0 << " j="<< j0 << " x=" << grid.id_to_coord(std::vector(dim, std::vector({i0, j0}))) << endl;
+             }
+        }
+
+        vector<double> x = {0.5, 0.25, 0.75};
+        auto bitvec = grid.coord_to_id(x);
+        for (int i=0; i<dim; i++)
+            cout << "i=" << i << " x[i]=" << x[i] << " bitvec[i]="<< bitvec[i] << endl;
 
     }
 

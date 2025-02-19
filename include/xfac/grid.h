@@ -122,6 +122,43 @@ struct Quantics {
 
 };
 
+
+class QuanticsTree {
+public:
+    double a, b;           ///< the start and end of the interval for all the variables
+    int nBit;              ///< number of bit for each variable
+    int dim;               ///< dimension of the hypercube
+
+    QuanticsTree(double a_, double b_, int nBit_, int dim_)
+        : a(a_)
+        , b(b_)
+        , nBit(nBit_)
+        , dim(dim_)
+        , grid{Quantics(a_, b_, nBit_, 1, false)}
+        {}
+
+    vector<vector<int>> coord_to_id(vector<double> const& x) const
+    {
+        vector<vector<int>> id;
+        for(auto i=0u; i<x.size(); i++)
+            id.push_back(grid.coord_to_id({x[i]}));
+        return id;
+    }
+
+    vector<double> id_to_coord(vector<vector<int>> const& id) const
+    {
+        vector<double> x(dim);
+        for(auto i=0; i<dim; i++) {
+            x[i] = grid.id_to_coord(id[i])[0];
+        }
+        return x;
+    }
+
+private:
+    Quantics grid;
+};
+
+
 } // end namespace grid
 } // end namespace xfac
 
