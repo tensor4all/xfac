@@ -53,6 +53,12 @@ struct TensorTree {
 
     /// evaluate the tensor train at a given multi index. Same as eval()
     T operator()(vector<int> const& id) const { return eval(id); }
+
+private:
+    static function<T(vector<vector<int>>)> tensorFun(function<T(vector<double>)> f, grid::QuanticsTree grid) {
+        return [=](vector<vector<int>> const& id) { return f(grid.id_to_coord(id)); };
+    }
+
 };
 
 
