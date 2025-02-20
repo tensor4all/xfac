@@ -25,6 +25,7 @@ set(header
     include/xfac/grid.h
     include/xfac/tree/tree.h    
     include/xfac/tree/tensor_tree.h
+    include/xfac/tree/tensor_tree_ci.h
 )
 
 add_library(${PROJECT_NAME} STATIC

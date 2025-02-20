@@ -30,11 +30,11 @@ arma::Cube<T> cube_vec(arma::Cube<T> const& M, arma::Col<T> v, int cube_pos)
 /// stores a tensor train, i.e., a list of cubes.
 template<class T>
 struct TensorTree {
-    vector< arma::Cube<T> >  M;   ///< list of 3-leg tensors
     OrderedTree tree;       ///< a tree that stores which nodes have physical leg
+    vector< arma::Cube<T> >  M;   ///< list of 3-leg tensors
 
     TensorTree()=default;
-    TensorTree(size_t len) : M(len) {}  //TODO: initialize the tree!
+    TensorTree(OrderedTree const& tree_) : tree(tree_), M(tree_.size()) {}
 
     /// evaluate the tensor train at a given multi index.
     T eval(vector<int> const& id) const
@@ -53,12 +53,6 @@ struct TensorTree {
 
     /// evaluate the tensor train at a given multi index. Same as eval()
     T operator()(vector<int> const& id) const { return eval(id); }
-
-private:
-    static function<T(vector<vector<int>>)> tensorFun(function<T(vector<double>)> f, grid::QuanticsTree grid) {
-        return [=](vector<vector<int>> const& id) { return f(grid.id_to_coord(id)); };
-    }
-
 };
 
 
