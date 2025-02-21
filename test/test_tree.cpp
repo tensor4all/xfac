@@ -34,9 +34,7 @@ TEST_CASE( "Test tree" )
 {
     OrderedTree tree;
 
-
     // the off-diagonal of the matrix are the edges with a number of sites
-
     for( auto [i,j]: vector<pair<int,int>> {{0,1}, {1,2}, {1,3}, {3,4}, {3,5}})
         tree.addEdge(i,j);
 
@@ -45,6 +43,7 @@ TEST_CASE( "Test tree" )
         for (auto i=0u; i<tree.nodes.size(); i++)
             std::cout << i << " " << tree.neigh[i].from_int()  <<  "\n";
     }
+
     SECTION( "sweeping" )
     {
         for (auto [from,to]:tree.rootToLeaves()) {
@@ -55,12 +54,6 @@ TEST_CASE( "Test tree" )
         }
     }
 
-    SECTION( "splitting" )
-    {
-        auto [s0, s1] = tree.split(1, 3);
-        std::cout << "s0= " << s0 <<  "\n";
-        std::cout << "s1= " << s1 <<  "\n";
-    }    
     SECTION( "contraction" )
     {
         cout<<"contraction\n";
@@ -79,18 +72,24 @@ TEST_CASE( "Test tree" )
         assert(!disconnected_graph.isTree());
     }
 
-
     SECTION( "tucker tree" )
     {
         cout<<"tucker tree\n";
 
-        for( auto [dim, nBits]: vector<pair<int,int>> {{3,1}, {4,2}, {6,3}}){
+        for( auto [dim, nBit]: vector<pair<int,int>> {{1,3}, {2,3}, {3,1}, {4,2}, {6,3}}){
 
-            std::cout << "make Tucker tree: dim= " << dim << " , nBits= " << nBits <<  "\n";
-            tree = makeTuckerTree(dim, nBits);
+            std::cout << "make Tucker tree: dim= " << dim << " , nBit= " << nBit <<  "\n";
+            tree = makeTuckerTree(dim, nBit);
             assert(tree.isTree());
 
-            // print tree
+            // the size follows directly from the structure of the tree
+            if (dim == 1){
+                assert(tree.size() == nBit);
+            } else {
+                assert(tree.size() == dim * (nBit + 1) - 2);
+            }
+
+            // print connections, TODO: maybe there is a better method to print tree explicitly
             std::set<int> visitedNodes;
             for (auto [from,to]:tree.rootToLeaves()) {
                 if (!visitedNodes.contains(from)){
@@ -104,25 +103,21 @@ TEST_CASE( "Test tree" )
         }
     }
 
-    SECTION( "quantics tree grid" )
+    SECTION( "splitting" )
     {
-        cout<<"quantics tree grid\n";
+        tree = makeTuckerTree(4, 2);
 
-        int dim=3;
-        int nBits=2;
-        auto grid = xfac::grid::QuanticsTree(0., 1., nBits, dim);
+        auto [s0, s1] = tree.split(4, 8);
+        assert(s0 == std::set({0, 4}));
+        assert(s1 == std::set({1, 2, 3, 5, 6, 7}));
 
-        for (auto i0 : {0, 1}){
-            for (auto j0 : {0, 1}){
-                cout << "i=" << i0 << " j="<< j0 << " x=" << grid.id_to_coord(std::vector(dim, std::vector({i0, j0}))) << endl;
-             }
-        }
+        std::tie(s0, s1) = tree.split(1, 5);
+        assert(s0 == std::set({1}));
+        assert(s1 == std::set({0, 2, 3, 4, 5, 6, 7}));
 
-        vector<double> x = {0.5, 0.25, 0.75};
-        auto bitvec = grid.coord_to_id(x);
-        for (int i=0; i<dim; i++)
-            cout << "i=" << i << " x[i]=" << x[i] << " bitvec[i]="<< bitvec[i] << endl;
-
+        std::tie(s0, s1) = tree.split(8, 9);
+        assert(s0 == std::set({0, 1, 4, 5}));
+        assert(s1 == std::set({2, 3, 6, 7}));
     }
 
 }
