@@ -34,7 +34,7 @@ struct TensorTreeCI {
     vector< IndexSet<MultiIndex> > localSet;    ///< collection of MultiIndex for each site: left, site, and right set of multiindex
     std::map<std::pair<int,int>, IndexSet<MultiIndex>> Iset, Jset;
     TensorTree<T> tt;                                      ///< main output of the Tensor CI
-    vector< arma::Mat<T> > P;                               ///< the pivot matrix in LU form for each bond
+    std::map<std::pair<int,int>, < arma::Mat<T> >> P;      ///< the pivot matrix in LU form for each bond
     int cIter=0;                                            ///< counter of iterations. Used for sweeping only.
     int center=0;                                           ///< current position of the CI center
 
@@ -47,7 +47,6 @@ struct TensorTreeCI {
         , pivotError(1)
         , localSet {localDim.size()}
         , tt {localDim.size()}
-        , P {localDim.size()}
         , pivotErrorAll {localDim.size()-1}
     {
         if (localDim.size() != tree.nodes.size()) throw std::invalid_argument("tree and localDim are incompatible");
@@ -65,8 +64,8 @@ struct TensorTreeCI {
         //fill Iset, Jset
         for (auto [from,to]:tree.leavesToRoot()) {
             auto [nodes0,nodes1]=tree.split(from,to);
-            Iset[{from,to}].push_back(param.pivot1[nodes0]); // exclude from
-            Jset[{from,to}].push_back(param.pivot1[nodes1]); // exclude to
+            for (auto node: nodes0) Iset[{from,to}].push_back(param.pivot1[node]);
+            for (auto node: nodes1) Jset[{from,to}].push_back(param.pivot1[node]);
         }
 
         //iterate(1,0); // just to define tt
@@ -99,21 +98,27 @@ protected:
     /// update the pivots at bond b using the Pi matrix.
     void dmrg2_updatePivotAt(int from, int to)
     {
-        IndexSet<MultiIndex> Ib= tree.nodes.contains(from) ?
-            kron(Iset[{from,to}],localSet[from]) :
-            Iset[{from,to}];
-        IndexSet<MultiIndex> Jb=kron(localSet[b+1],Jset[b+1])) ;
+        // Iset[b]   -> Iset[{from,to}]
+        // Iset[b+1] -> Iset[{to,from}]
+        // Jset[b]   -> Jset[{from,to}]
+        // Jset[b+1] -> Jset[{to,from}]
+        // localSet[b] -> localSet[from]
+        // localSet[b+1] -> localSet[to]
+
+        IndexSet<MultiIndex> Ib=kron(Iset[{from,to}],localSet[from])
+        IndexSet<MultiIndex> Jb=kron(localSet[to],Jset[{to,from}])) ;
         auto p1=param;
         //        p1.bondDim=std::min(p1.bondDim, (int)Iset[b+1].size()*2);           // limit the rank increase to duplication only
-        auto ci=CURDecomp<T> { f.matfun(Ib,Jb), Ib.pos(Iset[b+1]), Jb.pos(Jset[b]), b<center, p1 };
-        Iset[b+1]=Ib.at(ci.row_pivots());
-        Jset[b]=Jb.at(ci.col_pivots());
-        P[b]=ci.PivotMatrixTri();
-        set_site_tensor(b);
-        set_site_tensor(b+1);
-        collectPivotError(b, ci.pivotErrors());
+        auto ci=CURDecomp<T> { f.matfun(Ib,Jb), Ib.pos(Iset[{to, from}]), Jb.pos(Jset[{from, to}]), from<center, p1 };
+        Iset[{to, from}]=Ib.at(ci.row_pivots());
+        Jset[{from, to}]=Jb.at(ci.col_pivots());
+        P[{from,to}]=ci.PivotMatrixTri();
+        set_site_tensor(from, to);
+        set_site_tensor(to, from);
+        collectPivotError(from, to, ci.pivotErrors());
     }
 
+/*
     /// update the pivots at bond b using the P matrix
     void dmrg0_updatePivotAt(int from, int to)
     {
@@ -125,21 +130,21 @@ protected:
         set_site_tensor(b+1);
         collectPivotError(b, ci.pivotErrors());
     }
-
-    void set_site_tensor(int b)
+*/
+    void set_site_tensor(int from, int to)
     {
-        set_site_tensor(b, f.eval(kron(Iset[b],localSet[b]), Jset[b]));
-        if (b<center)
-            set_site_tensor(b, compute_CU_on_rows(cube_as_matrix2(tt.M[b]), P[b]));
-        else if (b>center)
-            set_site_tensor(b, compute_UR_on_cols(cube_as_matrix1(tt.M[b]),P.at(b-1)));
+        set_site_tensor(from, to, f.eval(kron(Iset[{from,to}],localSet[from]), Jset[{from, to}]));
+        if (from<center)
+            set_site_tensor(from, to, compute_CU_on_rows(cube_as_matrix2(tt.M[from]), P[{from,to}]));
+        else if (from>center)
+            set_site_tensor(to, from, compute_UR_on_cols(cube_as_matrix1(tt.M[to]), P.at({to,from})));
     }
 
-    void set_site_tensor(int b, arma::Mat<T> const& M) { tt.M[b]=arma::Cube<T>(M.memptr(), Iset[b].size(), localSet[b].size(), Jset[b].size());  }
+    void set_site_tensor(int from, int to, arma::Mat<T> const& M) { tt.M[from]=arma::Cube<T>(M.memptr(), Iset[{from,to}].size(), localSet[from].size(), Jset[{from,to}].size());  }
 
-    void collectPivotError(int b, vector<double> const& pe)
+    void collectPivotError(int from, int to, vector<double> const& pe)
     {
-        pivotErrorAll[b]=pe;
+        pivotErrorAll[{from,to}]=pe;
         if (pe.size()>pivotError.size()) pivotError.resize(pe.size(), 0);
         for(auto i=0u; i<pe.size(); i++)
             if (pe[i]>pivotError[i])
@@ -147,7 +152,7 @@ protected:
     }
 
 private:
-    vector<vector<double>> pivotErrorAll;           ///< The pivot error list for each bonds
+    std::map<std::pair<int,int>, <vector<double>> pivotErrorAll;           ///< The pivot error list for each bonds
 
 
 };
