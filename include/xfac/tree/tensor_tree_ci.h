@@ -64,8 +64,20 @@ struct TensorTreeCI {
         //fill Iset, Jset
         for (auto [from,to]:tree.leavesToRoot()) {
             auto [nodes0,nodes1]=tree.split(from,to);
-            for (auto node: nodes0) Iset[{from,to}].push_back(param.pivot1[node]);
-            for (auto node: nodes1) Jset[{from,to}].push_back(param.pivot1[node]);
+            vector<int> pvec0, pvec1;
+            for (auto node: nodes0) pvec0.push_back(param.pivot1[node]);
+            for (auto node: nodes1) pvec1.push_back(param.pivot1[node]);
+            Iset[{from,to}].push_back(pvec0);
+            Jset[{from,to}].push_back(pvec1);
+        }
+
+        for (auto [from,to]:tree.rootToLeaves()) {
+            auto [nodes0,nodes1]=tree.split(from,to);
+            vector<int> pvec0, pvec1;
+            for (auto node: nodes0) pvec0.push_back(param.pivot1[node]);
+            for (auto node: nodes1) pvec1.push_back(param.pivot1[node]);
+            Iset[{from,to}].push_back(pvec0);
+            Jset[{from,to}].push_back(pvec1);
         }
 
         //iterate(1,0); // just to define tt
@@ -75,6 +87,7 @@ struct TensorTreeCI {
     void iterate(int nIter=1, int dmrg_type=2)
     {
         for(auto i=0; i<nIter; i++) {
+            // leavesToRoot and rootToLeaves should visit nodes only once in one direction
             if (cIter%2==0)
                 for(auto [from,to]:tree.leavesToRoot()) { center=to; updatePivotAt(from, to, dmrg_type); }
             else
@@ -105,16 +118,23 @@ protected:
         // localSet[b] -> localSet[from]
         // localSet[b+1] -> localSet[to]
 
-        IndexSet<MultiIndex> Ib=kron(Iset[{from,to}],localSet[from])
-        IndexSet<MultiIndex> Jb=kron(localSet[to],Jset[{to,from}])) ;
+        IndexSet<MultiIndex> Ib=kron(Iset[{from,to}],localSet[from]);
+        IndexSet<MultiIndex> Jb=kron(localSet[to],Jset[{to,from}]);
         auto p1=param;
         //        p1.bondDim=std::min(p1.bondDim, (int)Iset[b+1].size()*2);           // limit the rank increase to duplication only
-        auto ci=CURDecomp<T> { f.matfun(Ib,Jb), Ib.pos(Iset[{to, from}]), Jb.pos(Jset[{from, to}]), from<center, p1 };
+        auto ci=CURDecomp<T> { f.matfun(Ib,Jb), Ib.pos(Iset[{to, from}]), Jb.pos(Jset[{from, to}]), from<to, p1 };
         Iset[{to, from}]=Ib.at(ci.row_pivots());
         Jset[{from, to}]=Jb.at(ci.col_pivots());
         P[{from,to}]=ci.PivotMatrixTri();
-        set_site_tensor(from, to);
-        set_site_tensor(to, from);
+
+        set_site_tensor(from, to, f.eval(kron(Iset[{from, to}],localSet[from]), Jset[{from, to}]));
+        set_site_tensor(to, from, f.eval(kron(Iset[{to, from}],localSet[to]), Jset[{to, from}]));
+
+        if (from<to) { // sweep leafsToRoot, is this condition sufficient, as it requires some specific tree ordering
+            set_site_tensor(from, to, compute_CU_on_rows(cube_as_matrix2(tt.M[from]), P[{from,to}]));
+        } else if (from>to) { // sweep rootToLeafs
+            set_site_tensor(to, from, compute_UR_on_cols(cube_as_matrix1(tt.M[to]), P.at({from, to})));
+        }
         collectPivotError(from, to, ci.pivotErrors());
     }
 
@@ -130,7 +150,7 @@ protected:
         set_site_tensor(b+1);
         collectPivotError(b, ci.pivotErrors());
     }
-*/
+
     void set_site_tensor(int from, int to)
     {
         set_site_tensor(from, to, f.eval(kron(Iset[{from,to}],localSet[from]), Jset[{from, to}]));
@@ -139,7 +159,7 @@ protected:
         else if (from>center)
             set_site_tensor(to, from, compute_UR_on_cols(cube_as_matrix1(tt.M[to]), P.at({to,from})));
     }
-
+*/
     void set_site_tensor(int from, int to, arma::Mat<T> const& M) { tt.M[from]=arma::Cube<T>(M.memptr(), Iset[{from,to}].size(), localSet[from].size(), Jset[{from,to}].size());  }
 
     void collectPivotError(int from, int to, vector<double> const& pe)
