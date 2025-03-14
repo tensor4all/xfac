@@ -33,7 +33,7 @@ struct TensorTreeCI {
     TensorCIParam param;                                   ///< parameters of the algorithm
     vector<double> pivotError;                              ///< max pivot error for each rank
     vector< IndexSet<MultiIndex> > localSet;    ///< collection of MultiIndex for each site: left, site, and right set of multiindex
-    std::map<std::pair<int,int>, IndexSet<MultiIndex>> Iset, Jset;
+    std::map<std::pair<int,int>, IndexSet<MultiIndex>> Iset;
     TensorTree<T> tt;                                      ///< main output of the Tensor CI
     std::map<std::pair<int,int>, arma::Mat<T>> P;      ///< the pivot matrix in LU form for each bond
     int cIter=0;                                            ///< counter of iterations. Used for sweeping only.
@@ -57,28 +57,20 @@ struct TensorTreeCI {
         if (pivotError[0]==0.0)
             throw std::invalid_argument("Not expecting f(pivot1)=0. Provide a better first pivot in the param");
 
-        // fill localSet
+        // fill localSet, TODO!
         for(auto p=0u; p<tree.nodes.size(); p++)
             for(auto i=0; i<localDim[p]; i++)
                 localSet[p].push_back({char32_t(i)});
 
-        //fill Iset, Jset
+        //fill Iset
         for (auto [from,to]:tree.leavesToRoot()) {
             auto [nodes0,nodes1]=tree.split(from,to);
-            vector<int> pvec0, pvec1;
-            for (auto node: nodes0) pvec0.push_back(param.pivot1[node]);
-            for (auto node: nodes1) pvec1.push_back(param.pivot1[node]);
+            vector<int> pvec0(tree.size(), 0);
+            vector<int> pvec1(tree.size(), 0);
+            for (auto node: nodes0) pvec0[node] = param.pivot1[node];
+            for (auto node: nodes1) pvec1[node] = param.pivot1[node];
             Iset[{from,to}].push_back(pvec0);
-            Jset[{from,to}].push_back(pvec1);
-        }
-
-        for (auto [from,to]:tree.rootToLeaves()) {
-            auto [nodes0,nodes1]=tree.split(from,to);
-            vector<int> pvec0, pvec1;
-            for (auto node: nodes0) pvec0.push_back(param.pivot1[node]);
-            for (auto node: nodes1) pvec1.push_back(param.pivot1[node]);
-            Iset[{from,to}].push_back(pvec0);
-            Jset[{from,to}].push_back(pvec1);
+            Iset[{to,from}].push_back(pvec1);
         }
 
         iterate(1,0); // just to define tt
@@ -112,7 +104,6 @@ protected:
     /// update the pivots at bond b using the Pi matrix.
     void dmrg2_updatePivotAt(int from, int to, bool rootToleaves)
     {
-
         IndexSet<MultiIndex> I_from = kronecker(from, to);
         IndexSet<MultiIndex> I_to = kronecker(to, from);
 
@@ -123,14 +114,14 @@ protected:
         Iset[{from, to}]=I_to.at(ci.col_pivots());
         P[{from,to}]=ci.PivotMatrixTri();
 
-//        set_site_tensor(from, to, f.eval(kron(Iset[{from, to}],localSet[from]), set[{from, to}]));
-//        set_site_tensor(to, from, f.eval(kron(Iset[{to, from}],localSet[to]), Jset[{to, from}]));
+        set_site_tensor(from, to, f.eval(kronecker(from, to), Iset[{from, to}]));
+        set_site_tensor(to, from, f.eval(kronecker(to, from), Iset[{to, from}]));
 
-//        if (rootToleaves) {
-//            set_site_tensor(from, to, compute_CU_on_rows(cube_as_matrix2(tt.M[from]), P[{from,to}]));
-//        } else {
-//            set_site_tensor(to, from, compute_UR_on_cols(cube_as_matrix1(tt.M[to]), P.at({from, to})));
-//        }
+        if (rootToleaves) {
+            set_site_tensor(from, to, compute_CU_on_rows(cube_as_matrix2(tt.M[from]), P[{from,to}]));
+        } else {
+            set_site_tensor(to, from, compute_UR_on_cols(cube_as_matrix1(tt.M[to]), P.at({from, to})));
+        }
         collectPivotError(from, to, ci.pivotErrors());
     }
 
@@ -170,7 +161,7 @@ protected:
             set_site_tensor(to, from, compute_UR_on_cols(cube_as_matrix1(tt.M[to]), P.at({to,from})));
     }
 */
-    void set_site_tensor(int from, int to, arma::Mat<T> const& M) { tt.M[from]=arma::Cube<T>(M.memptr(), Iset[{from,to}].size(), localSet[from].size(), Jset[{from,to}].size());  }
+    void set_site_tensor(int from, int to, arma::Mat<T> const& M) { tt.M[from]=arma::Cube<T>(M.memptr(), Iset[{from,to}].size(), localSet[from].size(), Iset[{to,from}].size());  }
 
     void collectPivotError(int from, int to, vector<double> const& pe)
     {
