@@ -4,6 +4,7 @@
 #include "xfac/index_set.h"
 #include "xfac/tree/tensor_tree.h"
 #include "xfac/tensor/tensor_function.h"
+#include "xfac/tensor/tensor_train.h"  // TODO: only needed for cube_as_matrix1 and cube_as_matrix2. move them in separate include file?
 
 namespace xfac {
 
@@ -34,7 +35,7 @@ struct TensorTreeCI {
     vector< IndexSet<MultiIndex> > localSet;    ///< collection of MultiIndex for each site: left, site, and right set of multiindex
     std::map<std::pair<int,int>, IndexSet<MultiIndex>> Iset, Jset;
     TensorTree<T> tt;                                      ///< main output of the Tensor CI
-    std::map<std::pair<int,int>, < arma::Mat<T> >> P;      ///< the pivot matrix in LU form for each bond
+    std::map<std::pair<int,int>, arma::Mat<T>> P;      ///< the pivot matrix in LU form for each bond
     int cIter=0;                                            ///< counter of iterations. Used for sweeping only.
     int center=0;                                           ///< current position of the CI center
 
@@ -46,10 +47,10 @@ struct TensorTreeCI {
         , param(param_)
         , pivotError(1)
         , localSet {localDim.size()}
-        , tt {localDim.size()}
-        , pivotErrorAll {localDim.size()-1}
+        , tt {tree}
     {
-        if (localDim.size() != tree.nodes.size()) throw std::invalid_argument("tree and localDim are incompatible");
+        //if (localDim.size() != tree.nodes.size()) throw std::invalid_argument("tree and localDim are incompatible");
+        if (localDim.size() != tree.size()) throw std::invalid_argument("tree and localDim are incompatible");
         if (param.pivot1.empty())
             param.pivot1.resize(localDim.size(), 0);
         pivotError[0]=std::abs(f.f(param.pivot1));
@@ -80,7 +81,7 @@ struct TensorTreeCI {
             Jset[{from,to}].push_back(pvec1);
         }
 
-        //iterate(1,0); // just to define tt
+        iterate(1,0); // just to define tt
     }
 
     /// makes nIter half sweeps. The dmrg_type can be 0,1,2
@@ -89,9 +90,9 @@ struct TensorTreeCI {
         for(auto i=0; i<nIter; i++) {
             // leavesToRoot and rootToLeaves should visit nodes only once in one direction
             if (cIter%2==0)
-                for(auto [from,to]:tree.leavesToRoot()) { center=to; updatePivotAt(from, to, dmrg_type); }
+                for(auto [from,to]:tree.rootToLeaves()) { updatePivotAt(from, to, dmrg_type); }
             else
-                for(auto [from,to]:tree.rootToLeaves()) { center=to; updatePivotAt(from, to, dmrg_type); }
+                for(auto [from,to]:tree.leavesToRoot()) { updatePivotAt(from, to, dmrg_type); }
             cIter++;
         }
     }
@@ -109,33 +110,42 @@ protected:
     }
 
     /// update the pivots at bond b using the Pi matrix.
-    void dmrg2_updatePivotAt(int from, int to)
+    void dmrg2_updatePivotAt(int from, int to, bool rootToleaves)
     {
-        // Iset[b]   -> Iset[{from,to}]
-        // Iset[b+1] -> Iset[{to,from}]
-        // Jset[b]   -> Jset[{from,to}]
-        // Jset[b+1] -> Jset[{to,from}]
-        // localSet[b] -> localSet[from]
-        // localSet[b+1] -> localSet[to]
 
-        IndexSet<MultiIndex> Ib=kron(Iset[{from,to}],localSet[from]);
-        IndexSet<MultiIndex> Jb=kron(localSet[to],Jset[{to,from}]);
+        IndexSet<MultiIndex> I_from = kronecker(from, to);
+        IndexSet<MultiIndex> I_to = kronecker(to, from);
+
         auto p1=param;
         //        p1.bondDim=std::min(p1.bondDim, (int)Iset[b+1].size()*2);           // limit the rank increase to duplication only
-        auto ci=CURDecomp<T> { f.matfun(Ib,Jb), Ib.pos(Iset[{to, from}]), Jb.pos(Jset[{from, to}]), from<to, p1 };
-        Iset[{to, from}]=Ib.at(ci.row_pivots());
-        Jset[{from, to}]=Jb.at(ci.col_pivots());
+        auto ci=CURDecomp<T> { f.matfun(I_from,I_to), I_from.pos(Iset[{to, from}]), I_to.pos(Iset[{from, to}]), rootToleaves, p1 };
+        Iset[{to, from}]=I_from.at(ci.row_pivots());
+        Iset[{from, to}]=I_to.at(ci.col_pivots());
         P[{from,to}]=ci.PivotMatrixTri();
 
-        set_site_tensor(from, to, f.eval(kron(Iset[{from, to}],localSet[from]), Jset[{from, to}]));
-        set_site_tensor(to, from, f.eval(kron(Iset[{to, from}],localSet[to]), Jset[{to, from}]));
+//        set_site_tensor(from, to, f.eval(kron(Iset[{from, to}],localSet[from]), set[{from, to}]));
+//        set_site_tensor(to, from, f.eval(kron(Iset[{to, from}],localSet[to]), Jset[{to, from}]));
 
-        if (from<to) { // sweep leafsToRoot, is this condition sufficient, as it requires some specific tree ordering
-            set_site_tensor(from, to, compute_CU_on_rows(cube_as_matrix2(tt.M[from]), P[{from,to}]));
-        } else if (from>to) { // sweep rootToLeafs
-            set_site_tensor(to, from, compute_UR_on_cols(cube_as_matrix1(tt.M[to]), P.at({from, to})));
-        }
+//        if (rootToleaves) {
+//            set_site_tensor(from, to, compute_CU_on_rows(cube_as_matrix2(tt.M[from]), P[{from,to}]));
+//        } else {
+//            set_site_tensor(to, from, compute_UR_on_cols(cube_as_matrix1(tt.M[to]), P.at({from, to})));
+//        }
         collectPivotError(from, to, ci.pivotErrors());
+    }
+
+    /// return $\mathcal{I}_{from}$
+    IndexSet<MultiIndex> kronecker(int from, int to) const
+    /*
+     *  $\mathcal{I}_{from} = (\sum_{i \in N} \mathcal{Iset}_{i, from}) \oplus \mathcal{localSet}_{from}$,
+     *  where $N$ are the direct neighbours of the site *from*, except one specific neighbours which we label as *to*. 
+     *  The sum has to be understood in a $\oplus$ sense.
+     */
+    {   
+        IndexSet<MultiIndex> Is;
+        for (auto const neighbour : tree.neigh[from])  
+            if (neighbour != to) Is = add(Is, Iset[neighbour, from]);
+        return add(Is, localSet[from]));
     }
 
 /*
@@ -172,7 +182,7 @@ protected:
     }
 
 private:
-    std::map<std::pair<int,int>, <vector<double>> pivotErrorAll;           ///< The pivot error list for each bonds
+    std::map<std::pair<int,int>, vector<double>> pivotErrorAll;           ///< The pivot error list for each bonds
 
 
 };
