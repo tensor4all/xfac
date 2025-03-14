@@ -92,6 +92,16 @@ using MultiIndex=std::u32string ;
 template<class T>
 using MultiIndexG=std::vector<T> ;
 
+inline MultiIndex& add_inplace(MultiIndex& a, MultiIndex const& b)
+{
+    if (a.size()!=b.size()) throw std::invalid_argument("kron of different sizes MultiIndex");
+    for(auto i=0u; i<a.size(); i++)
+        a[i]+=b[i];
+    return a;
+}
+
+inline MultiIndex add(MultiIndex const& a, MultiIndex const& b) { MultiIndex c=a; return add_inplace(c,b); }
+
 inline vector<int> multiIndex_as_vec(MultiIndex const& mi) { return vector<int> {mi.begin(), mi.end()}; }
 
 inline vector<vector<int>> multiIndex_as_vec(vector<MultiIndex> const& Iset)
@@ -121,6 +131,15 @@ inline vector<MultiIndex> kron( vector<MultiIndex> const& I1,vector<MultiIndex> 
     for(const auto& s2:I2)
         for(const auto& s1:I1)
             R.push_back(s1+s2);
+    return R;
+}
+
+inline vector<MultiIndex> add( vector<MultiIndex> const& I1,vector<MultiIndex> const& I2)
+{
+    vector<MultiIndex> R;
+    for(const auto& s2:I2)
+        for(const auto& s1:I1)
+            R.push_back(add(s1,s2));
     return R;
 }
 
