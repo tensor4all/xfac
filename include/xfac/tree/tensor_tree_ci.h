@@ -32,7 +32,7 @@ struct TensorTreeCI {
     TensorCIParam param;                                   ///< parameters of the algorithm
     vector<double> pivotError;                              ///< max pivot error for each rank
     vector< IndexSet<MultiIndex> > localSet;    ///< collection of MultiIndex for each site: left, site, and right set of multiindex
-    std::map<std::pair<int,int>, IndexSet<MultiIndex>> Iset, Jset;
+    std::map<std::pair<int,int>, IndexSet<MultiIndex>> Iset;
     TensorTree<T> tt;                                      ///< main output of the Tensor CI
     vector< arma::Mat<T> > P;                               ///< the pivot matrix in LU form for each bond
     int cIter=0;                                            ///< counter of iterations. Used for sweeping only.
@@ -65,8 +65,8 @@ struct TensorTreeCI {
         //fill Iset, Jset
         for (auto [from,to]:tree.leavesToRoot()) {
             auto [nodes0,nodes1]=tree.split(from,to);
-            Iset[{from,to}].push_back(param.pivot1[nodes0]); // exclude from
-            Jset[{from,to}].push_back(param.pivot1[nodes1]); // exclude to
+            Iset[{from,to}].push_back(param.pivot1[nodes0]);
+            Iset[{to,from}].push_back(param.pivot1[nodes1]);
         }
 
         //iterate(1,0); // just to define tt
@@ -99,28 +99,28 @@ protected:
     /// update the pivots at bond b using the Pi matrix.
     void dmrg2_updatePivotAt(int from, int to)
     {
-        IndexSet<MultiIndex> Ib= tree.nodes.contains(from) ?
-            kron(Iset[{from,to}],localSet[from]) :
-            Iset[{from,to}];
-        IndexSet<MultiIndex> Jb=kron(localSet[b+1],Jset[b+1])) ;
-        auto p1=param;
-        //        p1.bondDim=std::min(p1.bondDim, (int)Iset[b+1].size()*2);           // limit the rank increase to duplication only
-        auto ci=CURDecomp<T> { f.matfun(Ib,Jb), Ib.pos(Iset[b+1]), Jb.pos(Jset[b]), b<center, p1 };
-        Iset[b+1]=Ib.at(ci.row_pivots());
-        Jset[b]=Jb.at(ci.col_pivots());
-        P[b]=ci.PivotMatrixTri();
-        set_site_tensor(b);
-        set_site_tensor(b+1);
-        collectPivotError(b, ci.pivotErrors());
+        // IndexSet<MultiIndex> Ib= tree.nodes.contains(from) ?
+        //     kron(Iset[{from,to}],localSet[from]) :
+        //     Iset[{from,to}];
+        // IndexSet<MultiIndex> Jb=kron(localSet[b+1],Jset[b+1])) ;
+        // auto p1=param;
+        // //        p1.bondDim=std::min(p1.bondDim, (int)Iset[b+1].size()*2);           // limit the rank increase to duplication only
+        // auto ci=CURDecomp<T> { f.matfun(Ib,Jb), Ib.pos(Iset[b+1]), Jb.pos(Jset[b]), b<center, p1 };
+        // Iset[b+1]=Ib.at(ci.row_pivots());
+        // Jset[b]=Jb.at(ci.col_pivots());
+        // P[b]=ci.PivotMatrixTri();
+        // set_site_tensor(b);
+        // set_site_tensor(b+1);
+        // collectPivotError(b, ci.pivotErrors());
     }
 
     /// update the pivots at bond b using the P matrix
     void dmrg0_updatePivotAt(int from, int to)
     {
-        auto ci=CURDecomp<T> { f.eval(Iset[b+1],Jset[b]), b<center, param.reltol, param.bondDim };
-        Iset[b+1]=Iset[b+1].at(ci.row_pivots());
-        Jset[b]=Jset[b].at(ci.col_pivots());
-        P[b]=ci.PivotMatrixTri();
+        auto ci=CURDecomp<T> { f.eval(Iset[{from,to}],Iset[{to,from}]), true, param.reltol, param.bondDim };
+        Iset[{from,to}]=Iset[{from,to}].at(ci.row_pivots());
+        Iset[{{from,to}}]=Iset[{to,from}].at(ci.col_pivots());
+        P[{from,to}]=ci.PivotMatrixTri();
         set_site_tensor(b);
         set_site_tensor(b+1);
         collectPivotError(b, ci.pivotErrors());
