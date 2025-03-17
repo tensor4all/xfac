@@ -20,10 +20,31 @@ arma::Cube<T> cube_eval(arma::Cube<T> const& M, int slice_index)
 {
     return arma::reshape(M.slice(slice_index), M.n_rows, M.n_slices, 1); //dummy index 1
 }
+
+/// contract the cube_pos index of the cube with the vector
 template<class T>
 arma::Cube<T> cube_vec(arma::Cube<T> const& M, arma::Col<T> v, int cube_pos)
 {
-    return arma::reshape(M.slice(cube_pos), M.n_rows, M.n_slices, 1); //dummy index 1
+    if (cube_pos==2) {
+        arma::Mat<T> N=arma::reshape(M, M.n_rows*M.n_cols, M.n_slices, false);
+        arma::Col<T> y=N*v;
+        return arma::reshape(y, M.n_rows, M.n_cols, 1);
+    }
+    else if (cube_pos==0)
+    {
+        arma::Mat<T> N=arma::reshape(M, M.n_rows, M.n_cols*M.n_slices, false);//dummy index 1
+        arma::Col<T> y=v.as_row()*N;
+        return arma::reshape(y, 1, M.n_cols, M.n_slices);
+    }
+    else // cube_pos==1
+    {
+        if (M.n_cols!=v.size()) throw std::invalid_argument("M.n_cols!=v.size() for cube_pos==1");
+        arma::Mat<T> N(M.n_rows,M.n_slices, arma::fill::zeros);
+        for(auto j=0u; j<M.n_cols; j++)
+            N +=M.col(j)*v.at(j);
+        return arma::reshape(N, M.n_rows, 1, M.n_slices);
+    }
+    return arma::reshape(M.slice(cube_pos), M.n_rows, M.n_slices, 1);
 }
 
 
