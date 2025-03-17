@@ -114,8 +114,8 @@ protected:
         Iset[{from, to}]=I_to.at(ci.col_pivots());
         P[{from,to}]=ci.PivotMatrixTri();
 
-        set_site_tensor(from, to, f.eval(kronecker(from, to), Iset[{from, to}]));
-        set_site_tensor(to, from, f.eval(kronecker(to, from), Iset[{to, from}]));
+        set_site_tensor(from, to, f.eval(kronecker(from, to), Iset[{to, from}]));
+        set_site_tensor(to, from, f.eval(kronecker(to, from), Iset[{from, to}]));
 
         if (rootToleaves) {
             set_site_tensor(from, to, compute_CU_on_rows(cube_as_matrix2(tt.M[from]), P[{from,to}]));
