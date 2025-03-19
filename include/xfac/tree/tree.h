@@ -9,18 +9,16 @@
 #include <armadillo>
 #include <cassert>
 
-
-
 namespace xfac {
 
 
 
-class Tree {
+class TopologyTree {
 public:
-    std::set<int> nodes;                  // only the artificial nodes appear in this set
+    std::set<int> nodes;                  // only the physical nodes appear in this set
     std::map<int, IndexSet<int> > neigh;  // mapping from a node index to a set of its neighbors and their respective ordering
 
-    Tree(){}
+    TopologyTree(){}
 
     std::size_t size() const { return neigh.size(); }
 
@@ -30,12 +28,6 @@ public:
         neigh[from].push_back(to);
         neigh[to].push_back(from);
     }
-
-    /// return pair of nodes {from,to} with ordering: root -> leaves
-    virtual std::vector<std::pair<int,int>> rootToLeaves(int) const = 0;
-
-    /// return pair of nodes {from,to} with ordering: leaves -> root
-    virtual std::vector<std::pair<int,int>> leavesToRoot(int) const = 0;
 
     /// split tree at connecting edge between node0 and node1 and return the physical nodes (which are not in nodes) of the two subtrees
     std::pair<std::set<int>, std::set<int>> split(int node0, int node1) const
@@ -51,10 +43,11 @@ public:
             if (s1.contains(from) && to != node0) s1.insert(to);
             if (s1.contains(to) && from != node0) s1.insert(from);
         };
-        // Remove the artificial nodes from both sets
+        // Take the intersection between s0 and resp. s1
+        // and the set of phyiscal nodes, to remove the artificial nodes
         std::set<int> s0p, s1p;
-        std::set_difference(s0.begin(), s0.end(), nodes.begin(), nodes.end(), std::inserter(s0p, s0p.begin()));
-        std::set_difference(s1.begin(), s1.end(), nodes.begin(), nodes.end(), std::inserter(s1p, s1p.begin()));
+        std::set_intersection(s0.begin(), s0.end(), nodes.begin(), nodes.end(), std::inserter(s0p, s0p.begin()));
+        std::set_intersection(s1.begin(), s1.end(), nodes.begin(), nodes.end(), std::inserter(s1p, s1p.begin()));
         return std::make_pair(s0p, s1p);
     }
 
@@ -63,16 +56,30 @@ public:
     {
         std::set<int> connectedNodes;
         for (auto [from, to] : rootToLeaves(root)) {
+            connectedNodes.insert(from);
             connectedNodes.insert(to);
         }
         return connectedNodes.size() == size() ? true : false;
     }
-};
 
+    /// return pair of nodes {from,to} with ordering: root -> leaves
+    std::vector<std::pair<int,int>> rootToLeaves(int root=0) const
+    {
+        std::vector<std::pair<int,int>> out;
+        walk_depth_first(out,root);
+        return out;
+    }
 
-class OrderedTree: public Tree {
-public:
+    /// return pair of nodes {from,to} with ordering: leaves -> root
+    std::vector<std::pair<int,int>> leavesToRoot(int root=0) const
+    {
+        std::vector<std::pair<int,int>> out;
+        leaves_to_root(out,root);
+        return out;
+    }
 
+/*
+    // same as above, but this method climbes partly back to root in order to reach one leaf from the other
     std::vector<std::pair<int,int>> rootToLeaves(int root=0) const
     {
         std::vector<int> path;
@@ -83,22 +90,22 @@ public:
         return out;
     }
 
-    std::vector<std::pair<int,int>> leavesToRoot(int root=0) const
-    {
-        std::vector<std::pair<int,int>> out;
-        leaves_to_root(out,root);
-        return out;
-    }
-
-
-  private:
-
     void walk_depth_first(std::vector<int>& path, int nodeid, int parent=-1) const
     {
         path.push_back(nodeid);
         for ( auto n: this -> neigh.at(nodeid).from_int() )
             if (n!=parent) walk_depth_first(path, n, nodeid);
         if (parent!=-1) path.push_back(parent);
+    }
+*/
+
+  private:
+
+    void walk_depth_first(std::vector<std::pair<int,int>>& path, int nodeid, int parent=-1) const
+    {
+        if (parent!=-1) path.push_back({parent, nodeid});
+        for ( auto n: this -> neigh.at(nodeid).from_int() )
+            if (n!=parent) walk_depth_first(path, n, nodeid);
     }
 
     void leaves_to_root(std::vector<std::pair<int,int>>& path, int nodeid, int parent=-1) const
@@ -107,13 +114,16 @@ public:
             if (n!=parent) leaves_to_root(path, n, nodeid);
         if (parent!=-1) path.push_back({nodeid,parent});
     }
-
 };
 
-OrderedTree makeTuckerTree(int dim, int nBit){
-    /// return a Tucker tree.
 
-    OrderedTree tree;
+TopologyTree makeTuckerTree(int dim, int nBit){
+    /// Return a Tucker tree.
+    //  Convention: The nodes are first running over physical, then over artificial nodes.
+    //  Physical nodes have index from 0 to dim * nBit - 1, the dim - 2 artificial nodes follow consecutively.
+    //  Convention in the visualitions below: x refers to artificial nodes, o to physical nodes
+
+    TopologyTree tree;
 
     if (dim < 1) throw std::invalid_argument("makeTuckerTree: requires dim > 0");
     if (nBit < 1) throw std::invalid_argument("makeTuckerTree: requires nBit > 0");
@@ -125,6 +135,10 @@ OrderedTree makeTuckerTree(int dim, int nBit){
         // horizontal connections between physical nodes
         for(int i=0; i<nBit - 1; i++)
             tree.addEdge(i, i + 1);
+
+        // set physical nodes
+        for(int i=0; i<nBit; i++)
+            tree.nodes.insert(i);
 
     } else if (dim == 2) {
         //  special case with only physical nodes. tree plotted horizonally:
@@ -140,9 +154,12 @@ OrderedTree makeTuckerTree(int dim, int nBit){
         // vertical connection between physical nodes
         tree.addEdge(2 * nBit - 2, 2 * nBit - 1);
 
+        // set physical nodes
+        for(int i=0; i<2 * nBit; i++)
+            tree.nodes.insert(i);
+
     } else {
         //  General case. Index convention example for dim = 4, nBit = 2
-        //  x: artificial node (their are dim - 2), o: physical node (there are dim * nBit)
         //  note that the left and right corners of the artificial nodes are missing
         //
         //         8     9
@@ -169,8 +186,8 @@ OrderedTree makeTuckerTree(int dim, int nBit){
         for(int i=dim * nBit; i<dim * (nBit + 1) - 3; i++)
             tree.addEdge(i, i + 1);
 
-        // set artificial nodes
-        for(int i=dim * nBit; i<dim * (nBit + 1) - 2; i++)
+        // set physical nodes
+        for(int i=0; i<dim * nBit; i++)
             tree.nodes.insert(i);
     }
     return tree;

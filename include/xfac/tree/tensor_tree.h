@@ -51,11 +51,11 @@ arma::Cube<T> cube_vec(arma::Cube<T> const& M, arma::Col<T> v, int cube_pos)
 /// stores a tensor train, i.e., a list of cubes.
 template<class T>
 struct TensorTree {
-    OrderedTree tree;       ///< a tree that stores which nodes have physical leg
+    TopologyTree tree;       ///< a tree that stores which nodes have physical leg
     vector< arma::Cube<T> >  M;   ///< list of 3-leg tensors
 
     TensorTree()=default;
-    TensorTree(OrderedTree const& tree_) : tree(tree_), M(tree_.size()) {}
+    TensorTree(TopologyTree const& tree_) : tree(tree_), M(tree_.size()) {}
 
     /// evaluate the tensor train at a given multi index.
     T eval(vector<int> const& id) const

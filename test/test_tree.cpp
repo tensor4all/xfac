@@ -6,8 +6,9 @@
 #include "xfac/grid.h"
 
 /// Overload outstream to write vectors of numbers to the console
+
 template< typename T >
-std::ostream & operator<<( std::ostream & o, const std::set<T> & vec ) {
+std::ostream & operator<<( std::ostream & o, const std::vector<T> & vec ) {
     o <<  "[ ";
     for (auto elem : vec)
         o << elem << ", ";
@@ -16,7 +17,7 @@ std::ostream & operator<<( std::ostream & o, const std::set<T> & vec ) {
 }
 
 template< typename T >
-std::ostream & operator<<( std::ostream & o, const std::vector<T> & vec ) {
+std::ostream & operator<<( std::ostream & o, const std::set<T> & vec ) {
     o <<  "[ ";
     for (auto elem : vec)
         o << elem << ", ";
@@ -32,7 +33,7 @@ using namespace xfac;
 
 TEST_CASE( "Test tree" )
 {
-    OrderedTree tree;
+    TopologyTree tree;
 
     // the off-diagonal of the matrix are the edges with a number of sites
     for( auto [i,j]: vector<pair<int,int>> {{0,1}, {1,2}, {1,3}, {3,4}, {3,5}})
@@ -40,7 +41,7 @@ TEST_CASE( "Test tree" )
 
     SECTION("constructor") {
         cout<<"node data neighbors\n";
-        for (auto i=0u; i<tree.nodes.size(); i++)
+        for (auto i=0u; i<tree.size(); i++)
             std::cout << i << " " << tree.neigh[i].from_int()  <<  "\n";
     }
 
@@ -64,7 +65,7 @@ TEST_CASE( "Test tree" )
     SECTION( "is_tree" )
     {
         cout<<"test tree\n";
-        OrderedTree disconnected_graph;
+        TopologyTree disconnected_graph;
         for( auto [i,j]: vector<pair<int,int>> {{0,1}, {1,2}, {3,4}, {3,5}}) // two disconnected graphs
             disconnected_graph.addEdge(i,j);
 
@@ -90,15 +91,11 @@ TEST_CASE( "Test tree" )
             }
 
             // print connections, TODO: maybe there is a better method to print tree explicitly
-            std::set<int> visitedNodes;
             for (auto [from,to]:tree.rootToLeaves()) {
-                if (!visitedNodes.contains(from)){
-                    std::cout << from << " " << to;
-                    for (auto n:tree.neigh[from].from_int())
-                        if (n!=to) cout<<" "<< n;
-                    cout<<endl;
-                    visitedNodes.insert(from);
-                }
+                std::cout << from << " " << to;
+                for (auto n:tree.neigh[from].from_int())
+                    if (n!=to) cout<<" "<< n;
+                cout<<endl;
             }
         }
     }

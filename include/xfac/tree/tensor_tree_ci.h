@@ -28,7 +28,7 @@ struct TensorCIParam {
 /// which allows many cheap computations, i.e. the integral.
 template<class T>
 struct TensorTreeCI {
-    OrderedTree tree;
+    TopologyTree tree;
     TensorFunction<T> f;                                    ///< the tensor function f:(a1,a2,...,an)->T
     TensorCIParam param;                                   ///< parameters of the algorithm
     vector<double> pivotError;                              ///< max pivot error for each rank
@@ -41,7 +41,7 @@ struct TensorTreeCI {
 
 
     /// constructs a rank-1 TensorCI2 from a function f:(a1,a2,...,an)->eT  where the index ai is in [0,localDim[i]).
-    TensorTreeCI(TensorFunction<T> const& f_, OrderedTree tree_, vector<int> localDim, TensorCIParam param_={})
+    TensorTreeCI(TensorFunction<T> const& f_, TopologyTree tree_, vector<int> localDim, TensorCIParam param_={})
         : tree(tree_)
         , f {f_}
         , param(param_)
@@ -82,9 +82,9 @@ struct TensorTreeCI {
         for(auto i=0; i<nIter; i++) {
             // leavesToRoot and rootToLeaves should visit nodes only once in one direction
             if (cIter%2==0)
-                for(auto [from,to]:tree.rootToLeaves()) { updatePivotAt(from, to, dmrg_type); }
+                for(auto [from,to]:tree.rootToLeaves()) { center=to; updatePivotAt(from, to, dmrg_type); }
             else
-                for(auto [from,to]:tree.leavesToRoot()) { updatePivotAt(from, to, dmrg_type); }
+                for(auto [from,to]:tree.leavesToRoot()) { center=to; updatePivotAt(from, to, dmrg_type); }
             cIter++;
         }
     }
@@ -102,20 +102,23 @@ protected:
     }
 
     /// update the pivots at bond b using the Pi matrix.
-    void dmrg2_updatePivotAt(int from, int to, bool rootToleaves)
+    void dmrg2_updatePivotAt(int from, int to)
     {
         IndexSet<MultiIndex> I_from = kronecker(from, to);
         IndexSet<MultiIndex> I_to = kronecker(to, from);
 
         auto p1=param;
         //        p1.bondDim=std::min(p1.bondDim, (int)Iset[b+1].size()*2);           // limit the rank increase to duplication only
-        auto ci=CURDecomp<T> { f.matfun(I_from,I_to), I_from.pos(Iset[{to, from}]), I_to.pos(Iset[{from, to}]), rootToleaves, p1 };
-        Iset[{to, from}]=I_from.at(ci.row_pivots());
-        Iset[{from, to}]=I_to.at(ci.col_pivots());
+        auto ci=CURDecomp<T> { f.matfun(I_from,I_to), I_from.pos(Iset[{from, to}]), I_to.pos(Iset[{to, from}]), cIter%2==0, p1 };
+        Iset[{from, to}]=I_from.at(ci.row_pivots());
+        Iset[{to, from}]=I_to.at(ci.col_pivots());
         P[{from,to}]=ci.PivotMatrixTri();
 
-        set_site_tensor(from, to, f.eval(kronecker(from, to), Iset[{to, from}]));
-        set_site_tensor(to, from, f.eval(kronecker(to, from), Iset[{from, to}]));
+        //set_site_tensor(b);
+        //set_site_tensor(b+1);
+
+        set_site_tensor(from, to, f.eval(kronecker(from, to), Iset[{from, to}]));
+        set_site_tensor(to, from, f.eval(kronecker(to, from), Iset[{to, from}]));
 
         if (rootToleaves) {
             set_site_tensor(from, to, compute_CU_on_rows(cube_as_matrix2(tt.M[from]), P[{from,to}]));
@@ -123,6 +126,15 @@ protected:
             set_site_tensor(to, from, compute_UR_on_cols(cube_as_matrix1(tt.M[to]), P.at({from, to})));
         }
         collectPivotError(from, to, ci.pivotErrors());
+    }
+
+    void set_site_tensor(int b)
+    {
+        set_site_tensor(b, f.eval(kron(Iset[b],localSet[b]), Jset[b]));
+        if (b<center)
+            set_site_tensor(b, compute_CU_on_rows(cube_as_matrix2(tt.M[b]), P[b]));
+        else if (b>center)
+            set_site_tensor(b, compute_UR_on_cols(cube_as_matrix1(tt.M[b]),P.at(b-1)));
     }
 
     /// return $\mathcal{I}_{from}$
@@ -136,7 +148,9 @@ protected:
         IndexSet<MultiIndex> Is;
         for (auto const neighbour : tree.neigh[from])  
             if (neighbour != to) Is = add(Is, Iset[neighbour, from]);
-        return add(Is, localSet[from]));
+        if (tree.nodes.contains(from))
+            return add(Is, localSet[from]));
+        return Is;
     }
 
 /*
