@@ -61,7 +61,7 @@ struct TensorTreeCI {
         for(auto p=0u; p<tree.nodes.size(); p++)
             for(auto i=0; i<localDim[p]; i++)
                 localSet[p].push_back({char32_t(i)});
-
+/*
         //fill Iset
         for (auto [from,to]:tree.leavesToRoot()) {
             auto [nodes0,nodes1]=tree.split(from,to);
@@ -72,7 +72,7 @@ struct TensorTreeCI {
             Iset[{from,to}].push_back(pvec0);
             Iset[{to,from}].push_back(pvec1);
         }
-
+*/
         iterate(1,0); // just to define tt
     }
 
@@ -95,7 +95,7 @@ protected:
     void updatePivotAt(int from, int to, int dmrg=2)
     {
         switch (dmrg) {
-        case 0: dmrg0_updatePivotAt(from,to); break;
+        //case 0: dmrg0_updatePivotAt(from,to); break;
         // case 1: dmrg1_updatePivotAt(b); break;
         case 2: dmrg2_updatePivotAt(from,to); break;
         }
@@ -120,14 +120,14 @@ protected:
         set_site_tensor(from, to, f.eval(kronecker(from, to), Iset[{from, to}]));
         set_site_tensor(to, from, f.eval(kronecker(to, from), Iset[{to, from}]));
 
-        if (rootToleaves) {
-            set_site_tensor(from, to, compute_CU_on_rows(cube_as_matrix2(tt.M[from]), P[{from,to}]));
-        } else {
-            set_site_tensor(to, from, compute_UR_on_cols(cube_as_matrix1(tt.M[to]), P.at({from, to})));
-        }
+//        if (rootToleaves) {
+//            set_site_tensor(from, to, compute_CU_on_rows(cube_as_matrix2(tt.M[from]), P[{from,to}]));
+//        } else {
+//            set_site_tensor(to, from, compute_UR_on_cols(cube_as_matrix1(tt.M[to]), P.at({from, to})));
+//        }
         collectPivotError(from, to, ci.pivotErrors());
     }
-
+/*
     void set_site_tensor(int b)
     {
         set_site_tensor(b, f.eval(kron(Iset[b],localSet[b]), Jset[b]));
@@ -136,20 +136,40 @@ protected:
         else if (b>center)
             set_site_tensor(b, compute_UR_on_cols(cube_as_matrix1(tt.M[b]),P.at(b-1)));
     }
+*/
 
     /// return $\mathcal{I}_{from}$
     IndexSet<MultiIndex> kronecker(int from, int to) const
     /*
      *  $\mathcal{I}_{from} = (\sum_{i \in N} \mathcal{Iset}_{i, from}) \oplus \mathcal{localSet}_{from}$,
-     *  where $N$ are the direct neighbours of the site *from*, except one specific neighbours which we label as *to*. 
+     *  where $N$ are the direct neighbours of the site *from*, except one specific neighbours which we label as *to*.
      *  The sum has to be understood in a $\oplus$ sense.
      */
-    {   
+    {
         IndexSet<MultiIndex> Is;
-        for (auto const neighbour : tree.neigh[from])  
-            if (neighbour != to) Is = add(Is, Iset[neighbour, from]);
+        for (auto i=0u; i<tree.neigh.at(from).size(); i++){
+            auto neighbour = (tree.neigh.at(from)).at(i);
+            if (neighbour != to) Is = add(Is, Iset.at({neighbour, from}));
+        }
         if (tree.nodes.contains(from))
-            return add(Is, localSet[from]));
+            return add(Is, localSet.at(from));
+        return Is;
+    }
+
+    IndexSet<MultiIndex> ordered_kronecker(int from, int to) const
+    /*
+     *  $\mathcal{I}_{from} = (\sum_{i \in N} \mathcal{Iset}_{i, from}) \oplus \mathcal{localSet}_{from}$,
+     *  where $N$ are the direct neighbours of the site *from*, except one specific neighbours which we label as *to*.
+     *  The sum has to be understood in a $\oplus$ sense.
+     */
+    {
+        IndexSet<MultiIndex> Is;
+        for (auto i=0u; i<tree.neigh.at(from).size(); i++){
+            auto neighbour = (tree.neigh.at(from)).at(i);
+            Is = add(Is, Iset.at({neighbour, from}));
+        }
+        if (tree.nodes.contains(to))
+            return add(Is, localSet.at(to));
         return Is;
     }
 

@@ -117,7 +117,7 @@ public:
 };
 
 
-TopologyTree makeTuckerTree(int dim, int nBit){
+inline TopologyTree makeTuckerTree(int dim, int nBit){
     /// Return a Tucker tree.
     //  Convention: The nodes are first running over physical, then over artificial nodes.
     //  Physical nodes have index from 0 to dim * nBit - 1, the dim - 2 artificial nodes follow consecutively.
@@ -192,7 +192,6 @@ TopologyTree makeTuckerTree(int dim, int nBit){
     }
     return tree;
 }
-
 
 } // end namespace xfac
 

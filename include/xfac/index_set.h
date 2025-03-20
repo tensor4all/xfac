@@ -136,6 +136,8 @@ inline vector<MultiIndex> kron( vector<MultiIndex> const& I1,vector<MultiIndex> 
 
 inline vector<MultiIndex> add( vector<MultiIndex> const& I1,vector<MultiIndex> const& I2)
 {
+    if (I1.size() == 0) return I2;
+    if (I2.size() == 0) return I1;
     vector<MultiIndex> R;
     for(const auto& s2:I2)
         for(const auto& s1:I1)
