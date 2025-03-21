@@ -13,6 +13,32 @@ using cmpx=std::complex<double>;
 
 TEST_CASE( "Test tensor tree" )
 {
+
+
+/*  // TODO: cube_vec does not compile yet
+    SECTION( "cube_vec" )
+    {
+        double abstol = 1e-12;
+
+        {  // contract 0.th element
+            arma::Cube<cmpx> A(2, 3, 4, arma::fill::randu);
+            arma::Col<cmpx> B(2, arma::fill::randu);
+            arma::Cube<cmpx> C = cube_vec(A, B, 0);
+
+            for (auto j=0u; j<A.n_cols; j++){
+                for (auto l=0u; l<A.n_slices; l++){
+                    cmpx sum = 0.;
+                    for (auto k=0u; k<B.n_elem; k++){
+                        sum += A(k, j, l) * B(k);
+                    }
+                    assert(abs(C(0, j, l) - sum) <= abstol);
+                }
+            }
+        }
+    }
+*/
+
+
     SECTION( "cube_mat" )
     {
         double abstol = 1e-12;
