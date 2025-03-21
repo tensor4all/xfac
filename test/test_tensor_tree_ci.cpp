@@ -14,8 +14,6 @@ using cmpx=std::complex<double>;
 TEST_CASE( "Test tensor tree" )
 {
 
-
-/*  // TODO: cube_vec does not compile yet
     SECTION( "cube_vec" )
     {
         double abstol = 1e-12;
@@ -24,20 +22,47 @@ TEST_CASE( "Test tensor tree" )
             arma::Cube<cmpx> A(2, 3, 4, arma::fill::randu);
             arma::Col<cmpx> B(2, arma::fill::randu);
             arma::Cube<cmpx> C = cube_vec(A, B, 0);
-
-            for (auto j=0u; j<A.n_cols; j++){
-                for (auto l=0u; l<A.n_slices; l++){
+            for (auto i=0u; i<A.n_cols; i++){
+                for (auto j=0u; j<A.n_slices; j++){
                     cmpx sum = 0.;
                     for (auto k=0u; k<B.n_elem; k++){
-                        sum += A(k, j, l) * B(k);
+                        sum += A(k, i, j) * B(k);
                     }
-                    assert(abs(C(0, j, l) - sum) <= abstol);
+                    assert(abs(C(0, i, j) - sum) <= abstol);
+                }
+            }
+        }
+        {  // contract 1.th element
+            arma::Cube<cmpx> A(3, 2, 4, arma::fill::randu);
+            arma::Col<cmpx> B(2, arma::fill::randu);
+            arma::Cube<cmpx> C = cube_vec(A, B, 1);
+
+            for (auto i=0u; i<A.n_cols; i++){
+                for (auto j=0u; j<A.n_slices; j++){
+                    cmpx sum = 0.;
+                    for (auto k=0u; k<B.n_elem; k++){
+                        sum += A(i, k, j) * B(k);
+                    }
+                    assert(abs(C(i, 0, j) - sum) <= abstol);
+                }
+            }
+        }
+        {  // contract 2.th element
+            arma::Cube<cmpx> A(3, 4, 2, arma::fill::randu);
+            arma::Col<cmpx> B(2, arma::fill::randu);
+            arma::Cube<cmpx> C = cube_vec(A, B, 2);
+
+            for (auto i=0u; i<A.n_rows; i++){
+                for (auto j=0u; j<A.n_cols; j++){
+                    cmpx sum = 0.;
+                    for (auto k=0u; k<B.n_elem; k++){
+                        sum += A(i, j, k) * B(k);
+                    }
+                    assert(abs(C(i, j, 0) - sum) <= abstol);
                 }
             }
         }
     }
-*/
-
 
     SECTION( "cube_mat" )
     {
@@ -93,7 +118,6 @@ TEST_CASE( "Test tensor tree" )
         }
     }
 
-
     SECTION( "mat_cube" )
     {
         double abstol = 1e-12;
@@ -148,5 +172,4 @@ TEST_CASE( "Test tensor tree" )
             }
         }
     }
-
 }
