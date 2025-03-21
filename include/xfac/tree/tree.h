@@ -15,10 +15,12 @@ namespace xfac {
 
 class TopologyTree {
 public:
+    int root = 0;                         // default root position
     std::set<int> nodes;                  // only the physical nodes appear in this set
     std::map<int, IndexSet<int> > neigh;  // mapping from a node index to a set of its neighbors and their respective ordering
 
     TopologyTree(){}
+    TopologyTree(int root_) : root{root_} {}
 
     std::size_t size() const { return neigh.size(); }
 
@@ -52,7 +54,8 @@ public:
     }
 
     /// check if data structure is a tree
-    bool isTree(int root=0) const
+    bool isTree() const {return isTree(root);};
+    bool isTree(int root) const
     {
         std::set<int> connectedNodes;
         for (auto [from, to] : rootToLeaves(root)) {
@@ -63,7 +66,8 @@ public:
     }
 
     /// return pair of nodes {from,to} with ordering: root -> leaves
-    std::vector<std::pair<int,int>> rootToLeaves(int root=0) const
+    std::vector<std::pair<int,int>> rootToLeaves() const {return rootToLeaves(root);};
+    std::vector<std::pair<int,int>> rootToLeaves(int root) const
     {
         std::vector<std::pair<int,int>> out;
         walk_depth_first(out,root);
@@ -71,7 +75,8 @@ public:
     }
 
     /// return pair of nodes {from,to} with ordering: leaves -> root
-    std::vector<std::pair<int,int>> leavesToRoot(int root=0) const
+    std::vector<std::pair<int,int>> leavesToRoot() const {return leavesToRoot(root);};
+    std::vector<std::pair<int,int>> leavesToRoot(int root) const
     {
         std::vector<std::pair<int,int>> out;
         leaves_to_root(out,root);

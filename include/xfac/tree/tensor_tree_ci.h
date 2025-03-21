@@ -49,32 +49,107 @@ struct TensorTreeCI {
         , localSet {localDim.size()}
         , tt {tree}
     {
-        //if (localDim.size() != tree.nodes.size()) throw std::invalid_argument("tree and localDim are incompatible");
-        if (localDim.size() != tree.size()) throw std::invalid_argument("tree and localDim are incompatible");
+        if (localDim.size() != tree.nodes.size()) throw std::invalid_argument("tree and localDim are incompatible");
         if (param.pivot1.empty())
             param.pivot1.resize(localDim.size(), 0);
-        pivotError[0]=std::abs(f.f(param.pivot1));
+        T fpiv = f.f(param.pivot1); // TODO: why f.f() and not f()?
+        pivotError[0]=std::abs(fpiv);
         if (pivotError[0]==0.0)
             throw std::invalid_argument("Not expecting f(pivot1)=0. Provide a better first pivot in the param");
 
-        // fill localSet, TODO!
-        for(auto p=0u; p<tree.nodes.size(); p++)
+        // fill localSet
+        for(auto p=0u; p<len(); p++){
+            vector<int> lset(len(), 0);
             for(auto i=0; i<localDim[p]; i++)
-                localSet[p].push_back({char32_t(i)});
-/*
+                lset[p+i] = i;
+            localSet[p].push_back({lset.begin(), lset.end()});
+        }
+
         //fill Iset
         for (auto [from,to]:tree.leavesToRoot()) {
             auto [nodes0,nodes1]=tree.split(from,to);
-            vector<int> pvec0(tree.size(), 0);
-            vector<int> pvec1(tree.size(), 0);
+            vector<int> pvec0(tree.nodes.size(), 0);
+            vector<int> pvec1(tree.nodes.size(), 0);
             for (auto node: nodes0) pvec0[node] = param.pivot1[node];
             for (auto node: nodes1) pvec1[node] = param.pivot1[node];
-            Iset[{from,to}].push_back(pvec0);
-            Iset[{to,from}].push_back(pvec1);
+            Iset[{from,to}].push_back({pvec0.begin(), pvec0.end()});
+            Iset[{to,from}].push_back({pvec1.begin(), pvec1.end()});
+            P[{from,to}]=arma::Mat<T>(1,1);
+            P[{from,to}](0,0)=fpiv;
+            tt.M[from]=evaluateT(from, to);
+            arma::Mat<T> Pinv = P[{from,to}].i();
+            tt.M[from] *= Pinv(0,0);
         }
-*/
-        iterate(1,0); // just to define tt
+        tt.M[tree.root]=evaluateT(0, 1);  // what is from and to here??
+
+        //iterate(1,0); // just to define tt
     }
+
+
+    /// return the T3 tensor with dimensions (N_from, N_to, N_local)
+    /// N_from: all pivots of node *from* towards its neighbors except node *to*
+    /// N_to: all pivots of node *to* towards node *from*
+    /// N_local: number of local pivot indices if physical node, else 1
+    arma::Cube<T> get_T3(int from, int to) const {
+
+        // pivot indices of all neighbours of node *from* except node *to*
+        IndexSet<MultiIndex> Ip;
+        for (auto i=0u; i<tree.neigh.at(from).size(); i++){
+            auto neighbour = (tree.neigh.at(from)).at(i);
+            if (neighbour != to) Ip = add(Ip, Iset.at({neighbour, from}));
+        }
+
+        // pivot indices from node *to* towards node *from*
+        IndexSet<MultiIndex> Jp = Iset.at({to, from});
+
+        // local pivot indices on site *from* is it is a physical node
+        // TODO: add trivial length of 1 in case it is an artificial node
+        IndexSet<MultiIndex> Lp;
+        if (tree.nodes.contains(from))
+            Lp = localSet.at(from);
+
+        arma::Cube<T> T3(Ip.size(), Jp.size(), Lp.size(), arma::fill::zeros);
+
+        for (auto k=0u; k<T3.n_slices; k++) {
+            arma::Mat<T> T2(Ip.size(), Jp.size());
+            for(auto i=0u; i<T3.n_rows; i++) {
+                for(auto j=0u; j<T3.n_cols; j++) {
+                    auto Iijk=Ip.at(i)+Jp.at(j)+Lp.at(k);
+                    T2(i,j)=f(Iijk);
+                }
+            }
+            T3.slice(k) = T2;
+        }
+        return T3;
+    }
+
+/*
+    /// returns the matrix obtained when evaluating the tensor at site *from*,
+    /// T2(i,j)=f( Ip + Jp ) where Ip are the pivot indices at site *from*,
+    /// except site *to* and Jp are the pivot indices from site *to* to site *from*.
+    arma::Mat<T> get_T_mat(int from, int to) const {
+        IndexSet<MultiIndex> Ip = kronecker(from, to);
+        IndexSet<MultiIndex> Jp = Iset.at({to, from});
+        arma::Mat<T> T2(Ip.size(), Jp.size());
+        for(auto i=0u; i<T2.n_rows; i++) {
+            for(auto j=0u; j<T2.n_cols; j++) {
+                auto Iij=Ip.at(i)+Jp.at(j);
+                T2(i,j)=f(Iij);
+            }
+        }
+        return T2;
+    }
+*/
+
+    arma::Cube<T> evaluateT(int from, int to)
+    {
+        arma::Cube<T> T3 = get_T3(from, to);
+        arma::Mat<T> Pinv = P[{from,to}].i();
+        return cube_mat(T3, Pinv, 2);
+    }
+
+    /// returns the number of physical legs of the tensor tree
+    size_t len() const { return localSet.size(); }
 
     /// makes nIter half sweeps. The dmrg_type can be 0,1,2
     void iterate(int nIter=1, int dmrg_type=2)

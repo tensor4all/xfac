@@ -14,6 +14,25 @@ using cmpx=std::complex<double>;
 TEST_CASE( "Test tensor tree" )
 {
 
+    SECTION( "cos" )
+    {
+        int nBit = 1;
+        int dim=3;
+        long count=0;
+        function func=[&](vector<int> x) {
+            count++;
+            return exp(x[0] + x[1] + x[2]);
+        };
+
+        auto tree = makeTuckerTree(dim, nBit);
+
+        auto ci=TensorTreeCI<double>(func, tree, vector(dim * nBit, nBit), {.pivot1=vector(dim * nBit, 0)});
+
+        vector<int> x = {1, 0, 1};
+        //std::cout << "res= " << ci.tt.eval(x) << " , res_ref= " << func(x) <<  "\n";  // TODO: ci.tt.eval(x) does not compile yet!
+
+    }
+
     SECTION( "cube_vec" )
     {
         double abstol = 1e-12;
