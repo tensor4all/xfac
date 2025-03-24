@@ -135,14 +135,14 @@ struct TensorTree {
     {
         if (id.size()!=M.size()) throw std::invalid_argument("TensorTrain::() id.size()!=size()");
         auto prod=M; // a copy
-        for(auto k:tree.nodes)
-            prod[k]=cube_eval(M[k],id[k]);
+        //for(auto k:tree.nodes)
+        //    prod[k]=cube_eval(M[k],id[k]);  // <-- TODO: this line does not compile
         for(auto [from,to]:tree.leavesToRoot()) {
             arma::Col<T> v=arma::vectorise(prod[from]);
             int pos=tree.neigh.at(to).pos(from);
             prod[to]=cube_vec(prod[to],v,pos);
         }
-        return arma::vectorise(prod[0])(0);
+        return arma::conv_to<arma::Col<T>>::from(arma::vectorise(prod[0]))(0);
     }
 
     /// evaluate the tensor train at a given multi index. Same as eval()
