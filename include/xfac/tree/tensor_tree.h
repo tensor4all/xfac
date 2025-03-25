@@ -18,7 +18,8 @@ using std::array;
 template<class T>
 arma::Cube<T> cube_eval(arma::Cube<T> const& M, int slice_index)
 {
-    return arma::reshape(M.slice(slice_index), M.n_rows, M.n_slices, 1); //dummy index 1
+    arma::Mat<T> data=M.slice(slice_index);
+    return arma::cube(data.memptr(), M.n_rows, M.n_slices, 1, true); //dummy index 1
 }
 
 /// Return the cube $C = A B$, $A:$ cube, $B:$ vector, where cube_pos indicates
@@ -135,8 +136,8 @@ struct TensorTree {
     {
         if (id.size()!=M.size()) throw std::invalid_argument("TensorTrain::() id.size()!=size()");
         auto prod=M; // a copy
-        //for(auto k:tree.nodes)
-        //    prod[k]=cube_eval(M[k],id[k]);  // <-- TODO: this line does not compile
+        for(auto k:tree.nodes)
+           prod[k]=cube_eval(M[k],id[k]);  // <-- TODO: this line does not compile
         for(auto [from,to]:tree.leavesToRoot()) {
             arma::Col<T> v=arma::vectorise(prod[from]);
             int pos=tree.neigh.at(to).pos(from);
