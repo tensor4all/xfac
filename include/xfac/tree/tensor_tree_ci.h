@@ -76,11 +76,9 @@ struct TensorTreeCI {
             Iset[{to,from}].push_back({pvec1.begin(), pvec1.end()});
             P[{from,to}]=arma::Mat<T>(1,1);
             P[{from,to}](0,0)=fpiv;
-            tt.M[from]=evaluateT(from, to);
-            arma::Mat<T> Pinv = P[{from,to}].i();
-            tt.M[from] *= Pinv(0,0);
+            tt.M[from]=get_TP1(from,to);
         }
-        tt.M[tree.root]=evaluateT(0, 1);  // what is from and to here??
+        tt.M[tree.root]=get_T3(0);  // what is from and to here??
 
         //iterate(1,0); // just to define tt
     }
@@ -90,37 +88,28 @@ struct TensorTreeCI {
     /// N_from: all pivots of node *from* towards its neighbors except node *to*
     /// N_to: all pivots of node *to* towards node *from*
     /// N_local: number of local pivot indices if physical node, else 1
-    arma::Cube<T> get_T3(int from, int to) const {
+    arma::Cube<T> get_T3(int from) const {
 
         // pivot indices of all neighbours of node *from* except node *to*
-        IndexSet<MultiIndex> Ip;
-        for (auto i=0u; i<tree.neigh.at(from).size(); i++){
-            auto neighbour = (tree.neigh.at(from)).at(i);
-            if (neighbour != to) Ip = add(Ip, Iset.at({neighbour, from}));
+        vector<MultiIndex> Ip;
+        vector<int> shape;
+        for (auto neighbour : tree.neigh.at(from).from_int()) {
+            Ip = add(Ip, Iset.at({neighbour, from}));
+            shape.push_back(Iset.at({neighbour, from}).size());
+        }
+        if (shape.size()==1) shape.push_back(1);// leaf
+        if (tree.nodes.contains(from)) {
+            Ip = add(Ip,localSet.at(from));
+            shape.push_back(localSet.at(from).size());
         }
 
-        // pivot indices from node *to* towards node *from*
-        IndexSet<MultiIndex> Jp = Iset.at({to, from});
+        if(shape.size()!=3) throw std::runtime_error("tensor degree not 3 at get_T3");
 
-        // local pivot indices on site *from* is it is a physical node
-        // TODO: add trivial length of 1 in case it is an artificial node
-        IndexSet<MultiIndex> Lp;
-        if (tree.nodes.contains(from))
-            Lp = localSet.at(from);
+        arma::Col<T> data(Ip.size());
+        for(int i=0u; i<data.size(); i++)
+            data[i]=f(Ip[i]);
 
-        arma::Cube<T> T3(Ip.size(), Jp.size(), Lp.size(), arma::fill::zeros);
-
-        for (auto k=0u; k<T3.n_slices; k++) {
-            arma::Mat<T> T2(Ip.size(), Jp.size());
-            for(auto i=0u; i<T3.n_rows; i++) {
-                for(auto j=0u; j<T3.n_cols; j++) {
-                    auto Iijk=Ip.at(i)+Jp.at(j)+Lp.at(k);
-                    T2(i,j)=f(Iijk);
-                }
-            }
-            T3.slice(k) = T2;
-        }
-        return T3;
+        return arma::cube(data.memptr(), shape[0], shape[1], shape[2], true);
     }
 
 /*
@@ -141,11 +130,11 @@ struct TensorTreeCI {
     }
 */
 
-    arma::Cube<T> evaluateT(int from, int to)
+    arma::Cube<T> get_TP1(int from, int to)
     {
-        arma::Cube<T> T3 = get_T3(from, to);
+        arma::Cube<T> T3 = get_T3(from);
         arma::Mat<T> Pinv = P[{from,to}].i();
-        return cube_mat(T3, Pinv, 2);
+        return cube_mat(T3, Pinv, tree.neigh.at(from).pos(to));
     }
 
     /// returns the number of physical legs of the tensor tree
