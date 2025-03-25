@@ -15,11 +15,13 @@ using std::vector;
 using std::function;
 using std::array;
 
+/// For a cube C(I, J, L), where I,J,L are the set of indices (0,1..), return the cube C(I, J, L(slice_index))
+/// such that the last dimension has only one dummy index
 template<class T>
 arma::Cube<T> cube_eval(arma::Cube<T> const& M, int slice_index)
 {
     arma::Mat<T> data=M.slice(slice_index);
-    return arma::cube(data.memptr(), M.n_rows, M.n_slices, 1, true); //dummy index 1
+    return arma::cube(data.memptr(), M.n_rows, M.n_cols, 1, true); //dummy index 1
 }
 
 /// Return the cube $C = A B$, $A:$ cube, $B:$ vector, where cube_pos indicates
@@ -134,13 +136,16 @@ struct TensorTree {
     /// evaluate the tensor train at a given multi index.
     T eval(vector<int> const& id) const
     {
-        if (id.size()!=M.size()) throw std::invalid_argument("TensorTrain::() id.size()!=size()");
+        if (id.size()!=tree.nodes.size()) throw std::invalid_argument("TensorTree::() id.size()!=tree.nodes.size()");
         auto prod=M; // a copy
         for(auto k:tree.nodes)
-           prod[k]=cube_eval(M[k],id[k]);  // <-- TODO: this line does not compile
+            prod[k]=cube_eval(M[k],id[k]);
         for(auto [from,to]:tree.leavesToRoot()) {
             arma::Col<T> v=arma::vectorise(prod[from]);
             int pos=tree.neigh.at(to).pos(from);
+            //std::cout << "from= " << from << " , to= " << to << " cube_pos " << pos <<"\n";
+            //std::cout << "prod[to]= " << prod.at(to).n_rows << " " << prod.at(to).n_cols << " " << prod.at(to).n_slices <<  "\n";
+            //std::cout << "v n_cols= " << v.n_rows   << " n_elems= " << v.n_elem   <<  "\n";
             prod[to]=cube_vec(prod[to],v,pos);
         }
         return arma::conv_to<arma::Col<T>>::from(arma::vectorise(prod[0]))(0);

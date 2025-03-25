@@ -52,21 +52,23 @@ struct TensorTreeCI {
         if (localDim.size() != tree.nodes.size()) throw std::invalid_argument("tree and localDim are incompatible");
         if (param.pivot1.empty())
             param.pivot1.resize(localDim.size(), 0);
-        T fpiv = f.f(param.pivot1); // TODO: why f.f() and not f()?
+        T fpiv = f.f(param.pivot1);
         pivotError[0]=std::abs(fpiv);
         if (pivotError[0]==0.0)
             throw std::invalid_argument("Not expecting f(pivot1)=0. Provide a better first pivot in the param");
 
         // fill localSet
         for(auto p=0u; p<len(); p++){
-            vector<int> lset(len(), 0);
-            for(auto i=0; i<localDim[p]; i++)
-                lset[p+i] = i;
-            localSet[p].push_back({lset.begin(), lset.end()});
+            for(auto i=0; i<localDim[p]; i++){
+                vector<int> lset(len(), 0);
+                lset[i] = i;
+                localSet[p].push_back({lset.begin(), lset.end()});
+            }
         }
 
         //fill Iset
         for (auto [from,to]:tree.leavesToRoot()) {
+            //std::cout << from<<" " << to << "\n";
             auto [nodes0,nodes1]=tree.split(from,to);
             vector<int> pvec0(tree.nodes.size(), 0);
             vector<int> pvec1(tree.nodes.size(), 0);
@@ -76,9 +78,9 @@ struct TensorTreeCI {
             Iset[{to,from}].push_back({pvec1.begin(), pvec1.end()});
             P[{from,to}]=arma::Mat<T>(1,1);
             P[{from,to}](0,0)=fpiv;
-            tt.M[from]=get_TP1(from,to);
+            tt.M.at(from)=get_TP1(from,to);
         }
-        tt.M[tree.root]=get_T3(0);  // what is from and to here??
+        tt.M.at(tree.root)=get_T3(0);
 
         //iterate(1,0); // just to define tt
     }
@@ -134,6 +136,9 @@ struct TensorTreeCI {
     {
         arma::Cube<T> T3 = get_T3(from);
         arma::Mat<T> Pinv = P[{from,to}].i();
+//        std::cout << "from= " << from << " , to= " << to << " cube_pos" << tree.neigh.at(from).pos(to) <<"\n";
+//        std::cout << "T3 dims= " << T3.n_rows << " " << T3.n_cols << " " << T3.n_slices <<  "\n";
+//        std::cout << "Pinv dim= " << Pinv.n_rows << " " << Pinv.n_cols  <<  "\n";
         return cube_mat(T3, Pinv, tree.neigh.at(from).pos(to));
     }
 

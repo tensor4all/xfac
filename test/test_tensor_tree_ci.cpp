@@ -10,26 +10,40 @@ using namespace xfac;
 
 using cmpx=std::complex<double>;
 
+template< typename T >
+std::ostream & operator<<( std::ostream & o, const std::vector<T> & vec ) {
+    o <<  "[ ";
+    for (auto elem : vec)
+                o << elem << ", ";
+    o <<  "]";
+    return o;
+}
+
+
 
 TEST_CASE( "Test tensor tree" )
 {
 
-    SECTION( "cos" )
+    SECTION( "exp" )
     {
-        int nBit = 1;
+        int nBit = 10;
         int dim=3;
         long count=0;
-        function func=[&](vector<int> x) {
+        grid::Quantics grid(0., 1., nBit, dim);
+
+        function func=[&](vector<double> const& x) {
             count++;
             return exp(x[0] + x[1] + x[2]);
         };
 
+        function tfunc = [&](vector<int> xi){ return func(grid.id_to_coord(xi));};
+
         auto tree = makeTuckerTree(dim, nBit);
 
-        auto ci=TensorTreeCI<double>(func, tree, vector(dim * nBit, nBit), {.pivot1=vector(dim * nBit, 0)});
+        auto ci=TensorTreeCI<double>(tfunc, tree, grid.tensorDims(), {.pivot1=vector(grid.tensorLen, 0)});
 
-        vector<int> x = {1, 0, 1};
-        std::cout << "res= " << ci.tt.eval(x) << " , res_ref= " << func(x) <<  "\n";
+        vector<double> x = {0.2, 0.2, 0.2};
+        std::cout << "res= " << ci.tt.eval(grid.coord_to_id(x)) << " , res_ref= " << func(x) <<  "\n";
 
     }
 
