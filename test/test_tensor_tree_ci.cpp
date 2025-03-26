@@ -15,45 +15,20 @@ using cmpx=std::complex<double>;
 TEST_CASE( "Test tensor tree" )
 {
 
-    SECTION( "exp1d" )
-    {
-                int nBit = 3;
-                int dim=1;
-                grid::Quantics grid(0., 1., nBit, dim);
-
-                function func=[&](vector<double> const& x) {return exp(x[0]);};
-                function tfunc = [&](vector<int> xi){ return func(grid.id_to_coord(xi));};
-
-                auto tree = makeTuckerTree(dim, nBit);
-
-                auto ci=TensorTreeCI<double>(tfunc, tree, grid.tensorDims(), {.pivot1=vector(grid.tensorLen, 0)});
-
-                vector<double> x = {0.2};
-                std::cout << "res= " << ci.tt.eval(grid.coord_to_id(x)) << " , res_ref= " << func(x) <<  "\n";
-
-    }
-
     SECTION( "exp" )
     {
-        int nBit = 10;
+        int nBit = 25;
         int dim=3;
-        long count=0;
         grid::Quantics grid(0., 1., nBit, dim);
 
-        function func=[&](vector<double> const& x) {
-            count++;
-            return exp(x[0] + x[1] + x[2]);
-        };
-
+        function func=[&](vector<double> const& x) {return exp(4*x[0] + x[1] + 2*x[2]);};
         function tfunc = [&](vector<int> xi){ return func(grid.id_to_coord(xi));};
 
         auto tree = makeTuckerTree(dim, nBit);
-
         auto ci=TensorTreeCI<double>(tfunc, tree, grid.tensorDims(), {.pivot1=vector(grid.tensorLen, 0)});
 
-        vector<double> x = {0.2, 0.2, 0.2};
-        std::cout << "res= " << ci.tt.eval(grid.coord_to_id(x)) << " , res_ref= " << func(x) <<  "\n";
-
+        vector<double> x = {0.3, 0.2, 0.7};
+        assert ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
     }
 
     SECTION( "cube_vec" )

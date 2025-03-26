@@ -78,7 +78,6 @@ struct TensorTreeCI {
 
         //fill Iset
         for (auto [from,to]:tree.leavesToRoot()) {
-            //std::cout << from<<" " << to << "\n";
             auto [nodes0,nodes1]=tree.split(from,to);
             vector<int> pvec0(tree.nodes.size(), 0);
             vector<int> pvec1(tree.nodes.size(), 0);
@@ -94,19 +93,11 @@ struct TensorTreeCI {
         }
         tt.M.at(tree.root)=get_T3(0);
 
-        //auto t3 = get_T3(2);
-        //t3.print("t3");
-        //P.at({0,1}).print("P01");
-        //exit(0);
-
         //iterate(1,0); // just to define tt
     }
 
 
-    /// return the T3 tensor with dimensions (N_from, N_to, N_local)
-    /// N_from: all pivots of node *from* towards its neighbors except node *to*
-    /// N_to: all pivots of node *to* towards node *from*
-    /// N_local: number of local pivot indices if physical node, else 1
+    /// return the T3 tensor
     arma::Cube<T> get_T3(int from) const {
 
         // pivot indices of all neighbours of node *from* except node *to*
@@ -116,17 +107,11 @@ struct TensorTreeCI {
             Ip = add(Ip, Iset.at({neighbour, from}));
             shape.push_back(Iset.at({neighbour, from}).size());
         }
-        //std::cout << " Ip.len " << Ip.size() << " \n";
-        //std::cout << " Ip[0]= " << vector<int>{Ip[0].begin(),Ip[0].end()} << " \n";
         if (shape.size()==1) shape.push_back(1);// leaf
         if (tree.nodes.contains(from)) {
             Ip = add(Ip,localSet.at(from));
             shape.push_back(localSet.at(from).size());
         }
-
-        //std::cout << " Ip.len " << Ip.size() << " \n";
-        //std::cout << " Ip[0]= " << vector<int>{Ip[0].begin(),Ip[0].end()} << " \n";
-        //std::cout << " Ip[1]= " << vector<int>{Ip[1].begin(),Ip[1].end()} << " \n";
 
         if(shape.size()!=3) throw std::runtime_error("tensor degree not 3 at get_T3");
 
@@ -142,9 +127,6 @@ struct TensorTreeCI {
     {
         arma::Cube<T> T3 = get_T3(from);
         arma::Mat<T> Pinv = P[{from,to}].i();
-//        std::cout << "from= " << from << " , to= " << to << " cube_pos" << tree.neigh.at(from).pos(to) <<"\n";
-//        std::cout << "T3 dims= " << T3.n_rows << " " << T3.n_cols << " " << T3.n_slices <<  "\n";
-//        std::cout << "Pinv dim= " << Pinv.n_rows << " " << Pinv.n_cols  <<  "\n";
         return cube_mat(T3, Pinv, tree.neigh.at(from).pos(to));
     }
 
