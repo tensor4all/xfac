@@ -10,19 +10,28 @@ using namespace xfac;
 
 using cmpx=std::complex<double>;
 
-template< typename T >
-std::ostream & operator<<( std::ostream & o, const std::vector<T> & vec ) {
-    o <<  "[ ";
-    for (auto elem : vec)
-                o << elem << ", ";
-    o <<  "]";
-    return o;
-}
-
 
 
 TEST_CASE( "Test tensor tree" )
 {
+
+    SECTION( "exp1d" )
+    {
+                int nBit = 3;
+                int dim=1;
+                grid::Quantics grid(0., 1., nBit, dim);
+
+                function func=[&](vector<double> const& x) {return exp(x[0]);};
+                function tfunc = [&](vector<int> xi){ return func(grid.id_to_coord(xi));};
+
+                auto tree = makeTuckerTree(dim, nBit);
+
+                auto ci=TensorTreeCI<double>(tfunc, tree, grid.tensorDims(), {.pivot1=vector(grid.tensorLen, 0)});
+
+                vector<double> x = {0.2};
+                std::cout << "res= " << ci.tt.eval(grid.coord_to_id(x)) << " , res_ref= " << func(x) <<  "\n";
+
+    }
 
     SECTION( "exp" )
     {

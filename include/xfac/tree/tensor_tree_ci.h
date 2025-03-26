@@ -8,6 +8,16 @@
 
 namespace xfac {
 
+template< typename T >
+std::ostream & operator<<( std::ostream & o, const std::vector<T> & vec ) {
+    o <<  "[ ";
+    for (auto elem : vec)
+        o << elem << ", ";
+    o <<  "]";
+    return o;
+}
+
+
 
 /// Parameters of the TensorCI2 algorithm.
 struct TensorCIParam {
@@ -41,7 +51,7 @@ struct TensorTreeCI {
 
 
     /// constructs a rank-1 TensorCI2 from a function f:(a1,a2,...,an)->eT  where the index ai is in [0,localDim[i]).
-    TensorTreeCI(TensorFunction<T> const& f_, TopologyTree tree_, vector<int> localDim, TensorCIParam param_={})
+    TensorTreeCI(function<T(vector<int>)> const& f_, TopologyTree tree_, vector<int> localDim, TensorCIParam param_={})
         : tree(tree_)
         , f {f_}
         , param(param_)
@@ -61,7 +71,7 @@ struct TensorTreeCI {
         for(auto p=0u; p<len(); p++){
             for(auto i=0; i<localDim[p]; i++){
                 vector<int> lset(len(), 0);
-                lset[i] = i;
+                lset[p] = i;
                 localSet[p].push_back({lset.begin(), lset.end()});
             }
         }
@@ -78,9 +88,16 @@ struct TensorTreeCI {
             Iset[{to,from}].push_back({pvec1.begin(), pvec1.end()});
             P[{from,to}]=arma::Mat<T>(1,1);
             P[{from,to}](0,0)=fpiv;
+            P[{to,from}]=arma::Mat<T>(1,1);
+            P[{to,from}](0,0)=fpiv;
             tt.M.at(from)=get_TP1(from,to);
         }
         tt.M.at(tree.root)=get_T3(0);
+
+        //auto t3 = get_T3(2);
+        //t3.print("t3");
+        //P.at({0,1}).print("P01");
+        //exit(0);
 
         //iterate(1,0); // just to define tt
     }
@@ -99,11 +116,17 @@ struct TensorTreeCI {
             Ip = add(Ip, Iset.at({neighbour, from}));
             shape.push_back(Iset.at({neighbour, from}).size());
         }
+        //std::cout << " Ip.len " << Ip.size() << " \n";
+        //std::cout << " Ip[0]= " << vector<int>{Ip[0].begin(),Ip[0].end()} << " \n";
         if (shape.size()==1) shape.push_back(1);// leaf
         if (tree.nodes.contains(from)) {
             Ip = add(Ip,localSet.at(from));
             shape.push_back(localSet.at(from).size());
         }
+
+        //std::cout << " Ip.len " << Ip.size() << " \n";
+        //std::cout << " Ip[0]= " << vector<int>{Ip[0].begin(),Ip[0].end()} << " \n";
+        //std::cout << " Ip[1]= " << vector<int>{Ip[1].begin(),Ip[1].end()} << " \n";
 
         if(shape.size()!=3) throw std::runtime_error("tensor degree not 3 at get_T3");
 
@@ -114,23 +137,6 @@ struct TensorTreeCI {
         return arma::cube(data.memptr(), shape[0], shape[1], shape[2], true);
     }
 
-/*
-    /// returns the matrix obtained when evaluating the tensor at site *from*,
-    /// T2(i,j)=f( Ip + Jp ) where Ip are the pivot indices at site *from*,
-    /// except site *to* and Jp are the pivot indices from site *to* to site *from*.
-    arma::Mat<T> get_T_mat(int from, int to) const {
-        IndexSet<MultiIndex> Ip = kronecker(from, to);
-        IndexSet<MultiIndex> Jp = Iset.at({to, from});
-        arma::Mat<T> T2(Ip.size(), Jp.size());
-        for(auto i=0u; i<T2.n_rows; i++) {
-            for(auto j=0u; j<T2.n_cols; j++) {
-                auto Iij=Ip.at(i)+Jp.at(j);
-                T2(i,j)=f(Iij);
-            }
-        }
-        return T2;
-    }
-*/
 
     arma::Cube<T> get_TP1(int from, int to)
     {
