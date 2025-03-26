@@ -97,20 +97,25 @@ struct TensorTreeCI {
     }
 
 
-    /// return the T3 tensor
-    arma::Cube<T> get_T3(int from) const {
+    /// Return the 3-leg T-tensor T_l, where l is the node index.
+    /// Convention:
+    /// For a physical node: [T_l]_{i j \sigma} \equiv F_{i \oplus j \oplus (\sigma)}
+    /// for i \elem \mathcal{Iset}_0 and j \elem \mathcal{Iset}_1, where the subscript
+    /// k on \mathcal{Iset}_k labels the neighbours of a given node in consecutive order.
+    /// For an artificial node: [T_l]_{i j m} \equiv F_{i \oplus j \oplus m} with
+    /// i \elem \mathcal{Iset}_0, j \elem \mathcal{Iset}_1 and m \elem \mathcal{Iset}_2.
+    arma::Cube<T> get_T3(int node) const {
 
-        // pivot indices of all neighbours of node *from* except node *to*
         vector<MultiIndex> Ip;
         vector<int> shape;
-        for (auto neighbour : tree.neigh.at(from).from_int()) {
-            Ip = add(Ip, Iset.at({neighbour, from}));
-            shape.push_back(Iset.at({neighbour, from}).size());
+        for (auto neighbour : tree.neigh.at(node).from_int()) {
+            Ip = add(Ip, Iset.at({neighbour, node}));
+            shape.push_back(Iset.at({neighbour, node}).size());
         }
         if (shape.size()==1) shape.push_back(1);// leaf
-        if (tree.nodes.contains(from)) {
-            Ip = add(Ip,localSet.at(from));
-            shape.push_back(localSet.at(from).size());
+        if (tree.nodes.contains(node)) {
+            Ip = add(Ip,localSet.at(node));
+            shape.push_back(localSet.at(node).size());
         }
 
         if(shape.size()!=3) throw std::runtime_error("tensor degree not 3 at get_T3");
