@@ -28,7 +28,7 @@ void declare_TensorCI(py::module &m, std::string typestr) {
     py::class_<TensorTraind>(m, ("TensorTrain"s+typestr).c_str())
             .def(py::init<size_t>(), "len"_a)
             .def_readonly("core",  &TensorTraind::M)
-            .def("setCoreAt",[](TensorTraind &tt, int i, py::array_t<T> const& Mi){ tt.M.at(i)=carma::arr_to_cube<T>(Mi); }, "i"_a, "Mi"_a)
+            .def("setCoreAt",[](TensorTraind &tt, int i, py::array const& Mi){ tt.M.at(i)=carma::arr_to_cube<T>(Mi); }, "i"_a, "Mi"_a)
             .def("eval", &TensorTraind::eval)
             .def("sum", &TensorTraind::sum)
             .def("sum1", &TensorTraind::sum1)
