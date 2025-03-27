@@ -85,17 +85,10 @@ struct TensorTreeCI {
             for (auto node: nodes1) pvec1[node] = param.pivot1[node];
             Iset[{from,to}].push_back(pvec0);
             Iset[{to,from}].push_back(pvec1);
-            P[{from,to}]=arma::Mat<T>(1,1);
-            P[{from,to}](0,0)=fpiv;
-            P[{to,from}]=arma::Mat<T>(1,1);
-            P[{to,from}](0,0)=fpiv;
-            tt.M.at(from)=get_TP1(from,to);
         }
-        tt.M.at(tree.root)=get_T3(0);
 
-        //iterate(1,0); // just to define tt
+        iterate(1,0); // just to define tt
     }
-
 
     /// Return the 3-leg T-tensor T_l, where l is the node index.
     /// Convention:
@@ -144,11 +137,25 @@ struct TensorTreeCI {
         for(auto i=0; i<nIter; i++) {
             // leavesToRoot and rootToLeaves should visit nodes only once in one direction
             if (cIter%2==0)
-                for(auto [from,to]:tree.rootToLeaves()) { center=to; updatePivotAt(from, to, dmrg_type); }
-            else
                 for(auto [from,to]:tree.leavesToRoot()) { center=to; updatePivotAt(from, to, dmrg_type); }
+            else
+                for(auto [from,to]:tree.rootToLeaves()) { center=to; updatePivotAt(from, to, dmrg_type); }
             cIter++;
         }
+    }
+
+    void dmrg0_updatePivotAt(int from, int to)
+    {
+        MultiIndex ij = add(Iset[{from,to}].at(0), Iset[{to,from}].at(0));
+        vector<int> ijv = vector<int>{ij.begin(),ij.end()};
+        T feval = f.f(ijv);
+        P[{from,to}]=arma::Mat<T>(1,1);
+        P[{from,to}](0,0)=feval;
+        P[{to,from}]=arma::Mat<T>(1,1);
+        P[{to,from}](0,0)=feval;
+        tt.M.at(from)=get_TP1(from,to);
+        if (to == tree.root)
+            tt.M.at(tree.root)=get_T3(0);
     }
 
 protected:
@@ -157,9 +164,9 @@ protected:
     void updatePivotAt(int from, int to, int dmrg=2)
     {
         switch (dmrg) {
-        //case 0: dmrg0_updatePivotAt(from,to); break;
-        // case 1: dmrg1_updatePivotAt(b); break;
-        case 2: dmrg2_updatePivotAt(from,to); break;
+        case 0: dmrg0_updatePivotAt(from,to); break;
+        //case 1: dmrg1_updatePivotAt(b); break;
+        //case 2: dmrg2_updatePivotAt(from,to); break;
         }
     }
 
