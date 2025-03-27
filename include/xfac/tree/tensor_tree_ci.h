@@ -70,21 +70,21 @@ struct TensorTreeCI {
         // fill localSet
         for(auto p=0u; p<len(); p++){
             for(auto i=0; i<localDim[p]; i++){
-                vector<int> lset(len(), 0);
+                MultiIndex lset(len(), 0);
                 lset[p] = i;
-                localSet[p].push_back({lset.begin(), lset.end()});
+                localSet[p].push_back(lset);
             }
         }
 
         //fill Iset
         for (auto [from,to]:tree.leavesToRoot()) {
             auto [nodes0,nodes1]=tree.split(from,to);
-            vector<int> pvec0(tree.nodes.size(), 0);
-            vector<int> pvec1(tree.nodes.size(), 0);
+            MultiIndex pvec0(tree.nodes.size(), 0);
+            MultiIndex pvec1(tree.nodes.size(), 0);
             for (auto node: nodes0) pvec0[node] = param.pivot1[node];
             for (auto node: nodes1) pvec1[node] = param.pivot1[node];
-            Iset[{from,to}].push_back({pvec0.begin(), pvec0.end()});
-            Iset[{to,from}].push_back({pvec1.begin(), pvec1.end()});
+            Iset[{from,to}].push_back(pvec0);
+            Iset[{to,from}].push_back(pvec1);
             P[{from,to}]=arma::Mat<T>(1,1);
             P[{from,to}](0,0)=fpiv;
             P[{to,from}]=arma::Mat<T>(1,1);
