@@ -14,6 +14,24 @@ using cmpx=std::complex<double>;
 
 TEST_CASE( "Test tensor tree" )
 {
+    SECTION( "cos1d" )
+    {
+        int nBit = 25;
+        int dim=1;
+        grid::Quantics grid(0., 1., nBit, dim);
+
+        function func=[&](vector<double> const& x) {return cos(x[0]);};
+        function tfunc = [&](vector<int> xi){ return func(grid.id_to_coord(xi));};
+
+        auto tree = makeTuckerTree(dim, nBit);
+
+        auto ci=TensorTreeCI<double>(tfunc, tree, grid.tensorDims(), {.pivot1=vector(grid.tensorLen, 0)});
+        ci.addPivotsAllBonds({vector(grid.tensorLen, 1)});
+        ci.iterate(1,0);
+
+        vector<double> x = {0.2};
+        std::cout << "res= " << ci.tt.eval(grid.coord_to_id(x)) << " , res_ref= " << func(x) <<  "\n";
+    }
 
     SECTION( "exp" )
     {
@@ -26,6 +44,7 @@ TEST_CASE( "Test tensor tree" )
 
         auto tree = makeTuckerTree(dim, nBit);
         auto ci=TensorTreeCI<double>(tfunc, tree, grid.tensorDims(), {.pivot1=vector(grid.tensorLen, 0)});
+        ci.iterate(1,0);
 
         vector<double> x = {0.3, 0.2, 0.7};
         assert ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );

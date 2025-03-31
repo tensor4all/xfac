@@ -76,18 +76,8 @@ struct TensorTreeCI {
             }
         }
 
-        //fill Iset
-        for (auto [from,to]:tree.leavesToRoot()) {
-            auto [nodes0,nodes1]=tree.split(from,to);
-            MultiIndex pvec0(tree.nodes.size(), 0);
-            MultiIndex pvec1(tree.nodes.size(), 0);
-            for (auto node: nodes0) pvec0[node] = param.pivot1[node];
-            for (auto node: nodes1) pvec1[node] = param.pivot1[node];
-            Iset[{from,to}].push_back(pvec0);
-            Iset[{to,from}].push_back(pvec1);
-        }
-
-        iterate(1,0); // just to define tt
+        addPivotsAllBonds({param.pivot1});
+        //iterate(1,0); // just to define tt
     }
 
     /// Return the 3-leg T-tensor T_l, where l is the node index.
@@ -123,9 +113,9 @@ struct TensorTreeCI {
 
     arma::Cube<T> get_TP1(int from, int to)
     {
-        arma::Cube<T> T3 = get_T3(from);
+        tt.M.at(from) = get_T3(from);
         arma::Mat<T> Pinv = P[{from,to}].i();
-        return cube_mat(T3, Pinv, tree.neigh.at(from).pos(to));
+        return cube_mat(tt.M.at(from), Pinv, tree.neigh.at(from).pos(to));
     }
 
     /// returns the number of physical legs of the tensor tree
@@ -146,16 +136,44 @@ struct TensorTreeCI {
 
     void dmrg0_updatePivotAt(int from, int to)
     {
-        MultiIndex ij = add(Iset[{from,to}].at(0), Iset[{to,from}].at(0));
-        vector<int> ijv = vector<int>{ij.begin(),ij.end()};
-        T feval = f.f(ijv);
-        P[{from,to}]=arma::Mat<T>(1,1);
-        P[{from,to}](0,0)=feval;
-        P[{to,from}]=arma::Mat<T>(1,1);
-        P[{to,from}](0,0)=feval;
+        auto I = Iset[{from, to}];
+        auto J = Iset[{to, from}];
+        P[{from, to}] = arma::Mat<T>(I.size(), J.size());
+
+        for(auto i=0; i<I.size(); i++)
+            for(auto j=0; j<J.size(); j++)
+                P[{from, to}](i, j) = f(add(I.at(i), J.at(j)));
+
+        P[{to, from}] = arma::Mat<T>(J.size(), I.size());
+        for(auto j=0; j<J.size(); j++)
+            for(auto i=0; i<I.size(); i++)
+                P[{to, from}](j, i) = f(add(J.at(j), I.at(i)));
+
         tt.M.at(from)=get_TP1(from,to);
         if (to == tree.root)
             tt.M.at(tree.root)=get_T3(0);
+
+    }
+
+    /// add global pivots. The tt is not super stable anymore. For that call makeCanonical() afterward.
+    void addPivotsAllBonds(vector<vector<int>> const& pivots)
+    {
+        for (auto [from,to]:tree.leavesToRoot()) addPivotsAt(pivots, from, to);
+        //iterate(1,0);
+    }
+
+    /// add these pivots at a given bond b. The tt is not touched.
+    void addPivotsAt(vector<vector<int>> const& pivots, int from, int to)
+    {
+        auto [nodes0, nodes1]=tree.split(from, to);
+        MultiIndex pvec0(tree.nodes.size(), 0);
+        MultiIndex pvec1(tree.nodes.size(), 0);
+        for (const auto& pivot : pivots) {
+            for (auto node: nodes0) pvec0[node] = pivot[node];
+            for (auto node: nodes1) pvec1[node] = pivot[node];
+            Iset[{from,to}].push_back(pvec0);
+            Iset[{to,from}].push_back(pvec1);
+        }
     }
 
 protected:
