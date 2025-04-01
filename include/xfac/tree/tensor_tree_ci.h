@@ -96,17 +96,18 @@ struct TensorTreeCI {
             shape.push_back(Iset.at({neighbour, node}).size());
         }
         if (shape.size()==1) shape.push_back(1);// leaf
+
+        vector<MultiIndex> Jp;
         if (tree.nodes.contains(node)) {
-            Ip = add(Ip,localSet.at(node));
+            Jp = add(Jp,localSet.at(node));
             shape.push_back(localSet.at(node).size());
+        } else {
+            Jp.push_back(MultiIndex(tree.nodes.size(), 0));
         }
 
         if(shape.size()!=3) throw std::runtime_error("tensor degree not 3 at get_T3");
 
-        arma::Col<T> data(Ip.size());
-        for(int i=0u; i<data.size(); i++)
-            data[i]=f(Ip[i]);
-
+        arma::Mat<T> data = f.eval2(Ip, Jp);
         return arma::cube(data.memptr(), shape[0], shape[1], shape[2], true);
     }
 
