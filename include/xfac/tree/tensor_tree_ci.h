@@ -136,18 +136,12 @@ struct TensorTreeCI {
 
     void dmrg0_updatePivotAt(int from, int to)
     {
-        auto I = Iset[{from, to}];
-        auto J = Iset[{to, from}];
-        P[{from, to}] = arma::Mat<T>(I.size(), J.size());
+        auto ci=CURDecomp<T> { f.eval2(Iset[{from, to}], Iset[{to, from}]), cIter%2==0, param.reltol, param.bondDim };
 
-        for(auto i=0; i<I.size(); i++)
-            for(auto j=0; j<J.size(); j++)
-                P[{from, to}](i, j) = f(add(I.at(i), J.at(j)));
-
-        P[{to, from}] = arma::Mat<T>(J.size(), I.size());
-        for(auto j=0; j<J.size(); j++)
-            for(auto i=0; i<I.size(); i++)
-                P[{to, from}](j, i) = f(add(J.at(j), I.at(i)));
+        Iset[{from, to}] = Iset[{from, to}].at(ci.row_pivots());
+        Iset[{to, from}] = Iset[{to, from}].at(ci.col_pivots());
+        P[{from, to}] = ci.PivotMatrixTri();
+        P[{to, from}] = P[{from, to}].st();
 
         tt.M.at(from)=get_TP1(from,to);
         if (to == tree.root)
