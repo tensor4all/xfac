@@ -80,6 +80,17 @@ struct TensorFunction {
         return {I.size(), J.size(), submat};
     }
 
+    MatFun<T> matfun2(vector<MultiIndex> const& I, vector<MultiIndex> const& J) const
+    {
+        auto submat=[this,I,J](vector<int> const& I0, vector<int> const& J0) {
+            vector<MultiIndex> Is(I0.size()), Js(J0.size());
+            for(auto i=0u; i<Is.size(); i++) Is[i]=I[I0[i]];
+            for(auto j=0u; j<Js.size(); j++) Js[j]=J[J0[j]];
+            return eval2(Is,Js);
+        };
+        return {I.size(), J.size(), submat};
+    }
+
     void clearCache() { cEval+=dat.size(); dat.clear(); }
     size_t nEval() const { return dat.size()+cEval; }
 

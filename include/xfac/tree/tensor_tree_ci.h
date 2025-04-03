@@ -154,6 +154,37 @@ struct TensorTreeCI {
             tt.M.at(to)=get_T3(to);
     }
 
+    /// update the pivots on bond from node *from* to node *to* using the Pi matrix.
+    void dmrg2_updatePivotAt(int from, int to)
+    {
+        IndexSet<MultiIndex> I = kronecker(from, to);
+        IndexSet<MultiIndex> J = kronecker(to, from);
+
+        auto ci=CURDecomp<T> { f.matfun2(I, J), I.pos(Iset[{from, to}]), J.pos(Iset[{to, from}]), cIter%2==0, param };
+
+        Iset[{from, to}]=I.at(ci.row_pivots());
+        Iset[{to, from}]=J.at(ci.col_pivots());
+        P[{from,to}]=ci.PivotMatrixTri();
+        P[{to, from}] = P[{from, to}].st();
+        tt.M.at(from) = get_T3(from);
+
+        // leaves to root
+        arma::Mat<T> t3mat = cubeToMat(tt.M.at(from), tree.neigh.at(from).pos(to));
+        auto pos = cubeToMatPos(tt.M.at(from), tree.neigh.at(from).pos(to));
+        arma::Mat<T> TP1 = compute_CU_on_rows(t3mat, P[{from, to}]);
+        auto tp1_tmp = arma::Cube<T>(TP1.memptr(), pos[0], pos[1], pos[2], true);
+        tt.M.at(from) = reshape_cube2(tp1_tmp, tree.neigh.at(from).pos(to));
+
+
+        // TODO: root to leaves
+
+        // TODO: root and leaves boundaries
+        if (to == tree.root)
+            tt.M.at(to)=get_T3(to);
+
+        //collectPivotError(from, to, ci.pivotErrors());
+    }
+
     /// add global pivots. The tt is not super stable anymore. For that call makeCanonical() afterward.
     void addPivotsAllBonds(vector<vector<int>> const& pivots)
     {
@@ -183,46 +214,9 @@ protected:
         switch (dmrg) {
         case 0: dmrg0_updatePivotAt(from,to); break;
         //case 1: dmrg1_updatePivotAt(from, to); break;
-        //case 2: dmrg2_updatePivotAt(from,to); break;
+        case 2: dmrg2_updatePivotAt(from,to); break;
         }
     }
-
-    /// update the pivots at bond b using the Pi matrix.
-    void dmrg2_updatePivotAt(int from, int to)
-    {
-        IndexSet<MultiIndex> I_from = kronecker(from, to);
-        IndexSet<MultiIndex> I_to = kronecker(to, from);
-
-        auto p1=param;
-        //        p1.bondDim=std::min(p1.bondDim, (int)Iset[b+1].size()*2);           // limit the rank increase to duplication only
-        auto ci=CURDecomp<T> { f.matfun(I_from,I_to), I_from.pos(Iset[{from, to}]), I_to.pos(Iset[{to, from}]), cIter%2==0, p1 };
-        Iset[{from, to}]=I_from.at(ci.row_pivots());
-        Iset[{to, from}]=I_to.at(ci.col_pivots());
-        P[{from,to}]=ci.PivotMatrixTri();
-
-        //set_site_tensor(b);
-        //set_site_tensor(b+1);
-
-        set_site_tensor(from, to, f.eval(kronecker(from, to), Iset[{from, to}]));
-        set_site_tensor(to, from, f.eval(kronecker(to, from), Iset[{to, from}]));
-
-//        if (rootToleaves) {
-//            set_site_tensor(from, to, compute_CU_on_rows(cube_as_matrix2(tt.M[from]), P[{from,to}]));
-//        } else {
-//            set_site_tensor(to, from, compute_UR_on_cols(cube_as_matrix1(tt.M[to]), P.at({from, to})));
-//        }
-        collectPivotError(from, to, ci.pivotErrors());
-    }
-/*
-    void set_site_tensor(int b)
-    {
-        set_site_tensor(b, f.eval(kron(Iset[b],localSet[b]), Jset[b]));
-        if (b<center)
-            set_site_tensor(b, compute_CU_on_rows(cube_as_matrix2(tt.M[b]), P[b]));
-        else if (b>center)
-            set_site_tensor(b, compute_UR_on_cols(cube_as_matrix1(tt.M[b]),P.at(b-1)));
-    }
-*/
 
     /// return $\mathcal{I}_{from}$
     IndexSet<MultiIndex> kronecker(int from, int to) const
@@ -233,10 +227,8 @@ protected:
      */
     {
         IndexSet<MultiIndex> Is;
-        for (auto i=0u; i<tree.neigh.at(from).size(); i++){
-            auto neighbour = (tree.neigh.at(from)).at(i);
+        for (auto neighbour : tree.neigh.at(from).from_int())
             if (neighbour != to) Is = add(Is, Iset.at({neighbour, from}));
-        }
         if (tree.nodes.contains(from))
             return add(Is, localSet.at(from));
         return Is;
