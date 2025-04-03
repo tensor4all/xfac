@@ -24,6 +24,97 @@ arma::Cube<T> cube_eval(arma::Cube<T> const& M, int slice_index)
     return arma::cube(data.memptr(), M.n_rows, M.n_cols, 1, true); //dummy index 1
 }
 
+template<class T>
+arma::Mat<T> cubeToMat(arma::Cube<T> const& A, int cube_pos)
+{
+    if (cube_pos==0) { // reshape a cube as a matrix B(jk,i)=A(i,j,k)
+        arma::Mat<T> c(A.n_cols * A.n_slices, A.n_rows);
+        for(auto i=0u; i<A.n_rows; i++){
+            arma::Mat<T> ajk = A.row(i);
+            c.col(i) = arma::Col<T>(ajk.memptr(), A.n_cols * A.n_slices);;
+        }
+        return c;
+    } else if (cube_pos==1) { // reshape a cube as a matrix B(ik,j)=A(i,j,k)
+        arma::Mat<T> c(A.n_rows * A.n_slices, A.n_cols);
+        for(auto j=0u; j<A.n_cols; j++){
+            arma::Mat<T> aik = A.col(j);
+            c.col(j) = arma::Col<T>(aik.memptr(), A.n_rows * A.n_slices);;
+        }
+        return c;
+    } else if (cube_pos==2) { // reshape a cube as a matrix B(ij,k)=A(i,j,k)
+        return arma::Mat<T>(const_cast<T*>(A.memptr()), A.n_rows*A.n_cols, A.n_slices, false);
+    } else {
+        throw std::invalid_argument("cube_pos must be 0, 1 or 2");
+    }
+}
+
+
+template<class T>
+vector<long long unsigned int> cubeToMatPos(arma::Cube<T> const& A, int cube_pos)
+{
+    if (cube_pos==0) { // reshape a cube as a matrix B(jk,i)=A(i,j,k)
+        return {A.n_cols, A.n_slices, A.n_rows};
+    } else if (cube_pos==1) { // reshape a cube as a matrix B(ik,j)=A(i,j,k)
+        return {A.n_rows, A.n_slices, A.n_cols};;
+    } else if (cube_pos==2) { // reshape a cube as a matrix B(ij,k)=A(i,j,k)
+        return {A.n_rows, A.n_cols, A.n_slices};;
+    } else {
+        throw std::invalid_argument("cube_pos must be 0, 1 or 2");
+    }
+}
+
+
+/// Swap the leg with given cube position with the leg at the end.
+template<class T>
+arma::Cube<T> reshape_cube(arma::Cube<T> const& a, int cube_pos)
+{
+    if (cube_pos==0) { // $A_{i, j, k} -> A_{k, j, i}$
+        arma::Cube<T> c(a.n_slices, a.n_cols, a.n_rows);
+        for(auto i=0u; i<a.n_rows; i++){
+            arma::Mat<T> ajk = a.row(i);
+            c.slice(i) = ajk.st();
+        }
+        return c;
+    } else if (cube_pos==1) { // $A_{i, j, k} -> A_{i, k, j}$
+        arma::Cube<T> c(a.n_rows, a.n_slices, a.n_cols);
+        for(auto j=0u; j<a.n_cols; j++){
+            arma::Mat<T> aik = a.col(j);
+            c.slice(j) = aik;
+        }
+        return c;
+    } else if (cube_pos==2) { // unchanged: $A_{i, j, k} -> A_{i, j, k}$
+        return a;
+    } else {
+        throw std::invalid_argument("cube_pos must be 0, 1 or 2");
+    }
+}
+
+/// Swap the leg with given cube position with the leg at the end.
+template<class T>
+arma::Cube<T> reshape_cube2(arma::Cube<T> const& a, int cube_pos)
+{
+    if (cube_pos==0) { // $A_{i, j, k} -> A_{k, i, j}$
+        arma::Cube<T> c(a.n_slices, a.n_rows, a.n_cols);
+        for(auto j=0u; j<a.n_cols; j++){
+            arma::Mat<T> aik = a.col(j);
+            c.slice(j) = aik.st();
+        }
+        return c;
+    } else if (cube_pos==1) { // $A_{i, j, k} -> A_{i, k, j}$
+        arma::Cube<T> c(a.n_rows, a.n_slices, a.n_cols);
+        for(auto j=0u; j<a.n_cols; j++){
+            arma::Mat<T> aik = a.col(j);
+            c.slice(j) = aik;
+        }
+        return c;
+    } else if (cube_pos==2) { // unchanged: $A_{i, j, k} -> A_{i, j, k}$
+        return a;
+    } else {
+        throw std::invalid_argument("cube_pos must be 0, 1 or 2");
+    }
+}
+
+
 /// Return the cube $C = A B$, $A:$ cube, $B:$ vector, where cube_pos indicates
 /// which leg of the cube A to contract with B, see below for an exact definition.
 /// In C, the contracted leg has only one element.
@@ -143,12 +234,9 @@ struct TensorTree {
         for(auto [from,to]:tree.leavesToRoot()) {
             arma::Col<T> v=arma::vectorise(prod[from]);
             int pos=tree.neigh.at(to).pos(from);
-            //std::cout << "from= " << from << " , to= " << to << " cube_pos " << pos <<"\n";
-            //std::cout << "prod[to]= " << prod.at(to).n_rows << " " << prod.at(to).n_cols << " " << prod.at(to).n_slices <<  "\n";
-            //std::cout << "v n_cols= " << v.n_rows   << " n_elems= " << v.n_elem   <<  "\n";
             prod[to]=cube_vec(prod[to],v,pos);
         }
-        return arma::conv_to<arma::Col<T>>::from(arma::vectorise(prod[0]))(0);
+        return arma::conv_to<arma::Col<T>>::from(arma::vectorise(prod[tree.root]))(0);
     }
 
     /// evaluate the tensor train at a given multi index. Same as eval()

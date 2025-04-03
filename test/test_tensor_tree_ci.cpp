@@ -30,7 +30,26 @@ TEST_CASE( "Test tensor tree" )
         ci.iterate(1,0);
 
         vector<double> x = {0.2};
-        std::cout << "res= " << ci.tt.eval(grid.coord_to_id(x)) << " , res_ref= " << func(x) <<  "\n";
+        assert ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
+    }
+
+    SECTION( "cos" )
+    {
+        int nBit = 25;
+        int dim=3;
+        grid::Quantics grid(0., 1., nBit, dim);
+
+        function func=[&](vector<double> const& x) {return cos(4*x[0] + x[1] + 2*x[2]);};
+        function tfunc = [&](vector<int> xi){ return func(grid.id_to_coord(xi));};
+
+        auto tree = makeTuckerTree(dim, nBit);
+
+        auto ci=TensorTreeCI<double>(tfunc, tree, grid.tensorDims(), {.pivot1=vector(grid.tensorLen, 0)});
+        ci.addPivotsAllBonds({vector(grid.tensorLen, 1)});
+        ci.iterate(1,0);
+
+        vector<double> x = {0.3, 0.2, 0.7};
+        assert ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
     }
 
     SECTION( "exp" )
@@ -48,6 +67,126 @@ TEST_CASE( "Test tensor tree" )
 
         vector<double> x = {0.3, 0.2, 0.7};
         assert ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
+    }
+
+
+    SECTION( "reshape_cube2" )
+    {
+        double abstol = 1e-12;
+        arma::Cube<double> A(2, 3, 4, arma::fill::randu);
+
+        {  // reshape 0.th element A(i,j,l) -> A(l,i,j)
+            auto B = reshape_cube2(A, 0);
+            for (auto i=0u; i<A.n_rows; i++){
+                for (auto j=0u; j<A.n_cols; j++){
+                    for (auto l=0u; l<A.n_slices; l++){
+                        //std::cout << "ijl= " << i << " " << j << " " << l << " "<< A(i, j, l) << " "<<  B(l, i, j)<<"\n";
+                        assert(abs(A(i, j, l) - B(l, i, j)) <= abstol);
+                    }
+                }
+            }
+        }
+
+        {  // reshape 1.th element A(i,j,l) -> A(i,l,j)
+            auto B = reshape_cube2(A, 1);
+            for (auto i=0u; i<A.n_rows; i++){
+                for (auto j=0u; j<A.n_cols; j++){
+                    for (auto l=0u; l<A.n_slices; l++){
+                        assert(abs(A(i, j, l) - B(i, l, j)) <= abstol);
+                    }
+                }
+            }
+        }
+        {  // reshape 2.th element A(i,j,l) -> A(i,j,l)
+            auto B = reshape_cube2(A, 2);
+            for (auto i=0u; i<A.n_rows; i++){
+                for (auto j=0u; j<A.n_cols; j++){
+                    for (auto l=0u; l<A.n_slices; l++){
+                        assert(abs(A(i, j, l) - B(i, j, l)) <= abstol);
+                    }
+                }
+            }
+        }
+    }
+
+    SECTION( "reshape_cube" )
+    {
+        double abstol = 1e-12;
+        arma::Cube<double> A(2, 3, 4, arma::fill::randu);
+
+        {  // reshape 0.th element A(i,j,l) -> A(l,j,i)
+            auto B = reshape_cube(A, 0);
+            for (auto i=0u; i<A.n_rows; i++){
+                for (auto j=0u; j<A.n_cols; j++){
+                    for (auto l=0u; l<A.n_slices; l++){
+                        //std::cout << "ijl= " << i << " " << j << " " << l << " "<< A(i, j, l) << " "<<  B(l,j,i)<<"\n";
+                        assert(abs(A(i, j, l) - B(l, j, i)) <= abstol);
+                    }
+                }
+            }
+        }
+
+        {  // reshape 1.th element A(i,j,l) -> A(i,l,j)
+            auto B = reshape_cube(A, 1);
+            for (auto i=0u; i<A.n_rows; i++){
+                for (auto j=0u; j<A.n_cols; j++){
+                    for (auto l=0u; l<A.n_slices; l++){
+                        assert(abs(A(i, j, l) - B(i, l, j)) <= abstol);
+                    }
+                }
+            }
+        }
+        {  // reshape 2.th element A(i,j,l) -> A(i,j,l)
+            auto B = reshape_cube(A, 2);
+            for (auto i=0u; i<A.n_rows; i++){
+                for (auto j=0u; j<A.n_cols; j++){
+                    for (auto l=0u; l<A.n_slices; l++){
+                        assert(abs(A(i, j, l) - B(i, j, l)) <= abstol);
+                    }
+                }
+            }
+        }
+    }
+
+
+    SECTION( "cubeToMat" )
+    {
+        double abstol = 1e-12;
+        arma::Cube<double> A(2, 3, 4, arma::fill::randu);
+
+        {  // reshape 0.th element, cube as a matrix B(jl,i)=A(i,j,l)
+            arma::Mat<double> B = cubeToMat(A, 0);
+            for (auto i=0u; i<A.n_rows; i++){
+                for (auto j=0u; j<A.n_cols; j++){
+                    for (auto l=0u; l<A.n_slices; l++){
+                        auto jl = j + l * A.n_cols;
+                        assert(abs(A(i, j, l) - B(jl, i)) <= abstol);
+                    }
+                }
+            }
+        }
+        {  // reshape 1.th element, cube as a matrix B(il,j)=A(i,j,l)
+            arma::Mat<double> B = cubeToMat(A, 1);
+            for (auto i=0u; i<A.n_rows; i++){
+                for (auto j=0u; j<A.n_cols; j++){
+                    for (auto l=0u; l<A.n_slices; l++){
+                        auto il = i + l * A.n_rows;
+                        assert(abs(A(i, j, l) - B(il, j)) <= abstol);
+                    }
+                }
+            }
+        }
+        {  // reshape 2.th element, cube as a matrix B(ij,l)=A(i,j,l)
+            arma::Mat<double> B = cubeToMat(A, 2);
+            for (auto i=0u; i<A.n_rows; i++){
+                for (auto j=0u; j<A.n_cols; j++){
+                    for (auto l=0u; l<A.n_slices; l++){
+                        auto ij = i + j * A.n_rows;
+                        assert(abs(A(i, j, l) - B(ij, l)) <= abstol);
+                    }
+                }
+            }
+        }
     }
 
     SECTION( "cube_vec" )

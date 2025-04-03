@@ -126,7 +126,6 @@ struct TensorTreeCI {
     void iterate(int nIter=1, int dmrg_type=2)
     {
         for(auto i=0; i<nIter; i++) {
-            // leavesToRoot and rootToLeaves should visit nodes only once in one direction
             if (cIter%2==0)
                 for(auto [from,to]:tree.leavesToRoot()) { center=to; updatePivotAt(from, to, dmrg_type); }
             else
@@ -144,10 +143,15 @@ struct TensorTreeCI {
         P[{from, to}] = ci.PivotMatrixTri();
         P[{to, from}] = P[{from, to}].st();
 
-        tt.M.at(from)=get_TP1(from,to);
-        if (to == tree.root)
-            tt.M.at(tree.root)=get_T3(0);
+        tt.M.at(from) = get_T3(from);
+        arma::Mat<T> t3mat = cubeToMat(tt.M.at(from), tree.neigh.at(from).pos(to));
+        auto pos = cubeToMatPos(tt.M.at(from), tree.neigh.at(from).pos(to));
+        arma::Mat<T> TP1 = compute_CU_on_rows(t3mat, P[{from, to}]);
+        auto tp1_tmp = arma::Cube<T>(TP1.memptr(), pos[0], pos[1], pos[2], true);
+        tt.M.at(from) = reshape_cube2(tp1_tmp, tree.neigh.at(from).pos(to));
 
+        if (to == tree.root)
+            tt.M.at(to)=get_T3(to);
     }
 
     /// add global pivots. The tt is not super stable anymore. For that call makeCanonical() afterward.
@@ -178,7 +182,7 @@ protected:
     {
         switch (dmrg) {
         case 0: dmrg0_updatePivotAt(from,to); break;
-        //case 1: dmrg1_updatePivotAt(b); break;
+        //case 1: dmrg1_updatePivotAt(from, to); break;
         //case 2: dmrg2_updatePivotAt(from,to); break;
         }
     }
@@ -255,28 +259,6 @@ protected:
         return Is;
     }
 
-/*
-    /// update the pivots at bond b using the P matrix
-    void dmrg0_updatePivotAt(int from, int to)
-    {
-        auto ci=CURDecomp<T> { f.eval(Iset[b+1],Jset[b]), b<center, param.reltol, param.bondDim };
-        Iset[b+1]=Iset[b+1].at(ci.row_pivots());
-        Jset[b]=Jset[b].at(ci.col_pivots());
-        P[b]=ci.PivotMatrixTri();
-        set_site_tensor(b);
-        set_site_tensor(b+1);
-        collectPivotError(b, ci.pivotErrors());
-    }
-
-    void set_site_tensor(int from, int to)
-    {
-        set_site_tensor(from, to, f.eval(kron(Iset[{from,to}],localSet[from]), Jset[{from, to}]));
-        if (from<center)
-            set_site_tensor(from, to, compute_CU_on_rows(cube_as_matrix2(tt.M[from]), P[{from,to}]));
-        else if (from>center)
-            set_site_tensor(to, from, compute_UR_on_cols(cube_as_matrix1(tt.M[to]), P.at({to,from})));
-    }
-*/
     void set_site_tensor(int from, int to, arma::Mat<T> const& M) { tt.M[from]=arma::Cube<T>(M.memptr(), Iset[{from,to}].size(), localSet[from].size(), Iset[{to,from}].size());  }
 
     void collectPivotError(int from, int to, vector<double> const& pe)
