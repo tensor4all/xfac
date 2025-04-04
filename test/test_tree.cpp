@@ -1,7 +1,6 @@
 #include<catch2/catch.hpp>
 
 #include<iostream>
-#include <cassert>
 #include "xfac/tree/tree.h"
 #include "xfac/grid.h"
 
@@ -69,8 +68,8 @@ TEST_CASE( "Test tree" )
         for( auto [i,j]: vector<pair<int,int>> {{0,1}, {1,2}, {3,4}, {3,5}}) // two disconnected graphs
             disconnected_graph.addEdge(i,j);
 
-        assert(tree.isTree());
-        assert(!disconnected_graph.isTree());
+        REQUIRE(tree.isTree());
+        REQUIRE(!disconnected_graph.isTree());
     }
 
     SECTION( "tucker tree" )
@@ -81,13 +80,13 @@ TEST_CASE( "Test tree" )
 
             std::cout << "make Tucker tree: dim= " << dim << " , nBit= " << nBit <<  "\n";
             tree = makeTuckerTree(dim, nBit);
-            assert(tree.isTree());
+            REQUIRE(tree.isTree());
 
             // the size follows directly from the structure of the tree
             if (dim == 1){
-                assert(tree.size() == nBit);
+                REQUIRE(tree.size() == nBit);
             } else {
-                assert(tree.size() == dim * (nBit + 1) - 2);
+                REQUIRE(tree.size() == dim * (nBit + 1) - 2);
             }
 
             // print connections, TODO: maybe there is a better method to print tree explicitly
@@ -105,16 +104,16 @@ TEST_CASE( "Test tree" )
         tree = makeTuckerTree(4, 2);
 
         auto [s0, s1] = tree.split(4, 8);
-        assert(s0 == std::set({0, 4}));
-        assert(s1 == std::set({1, 2, 3, 5, 6, 7}));
+        REQUIRE(s0 == std::set({0, 4}));
+        REQUIRE(s1 == std::set({1, 2, 3, 5, 6, 7}));
 
         std::tie(s0, s1) = tree.split(1, 5);
-        assert(s0 == std::set({1}));
-        assert(s1 == std::set({0, 2, 3, 4, 5, 6, 7}));
+        REQUIRE(s0 == std::set({1}));
+        REQUIRE(s1 == std::set({0, 2, 3, 4, 5, 6, 7}));
 
         std::tie(s0, s1) = tree.split(8, 9);
-        assert(s0 == std::set({0, 1, 4, 5}));
-        assert(s1 == std::set({2, 3, 6, 7}));
+        REQUIRE(s0 == std::set({0, 1, 4, 5}));
+        REQUIRE(s1 == std::set({2, 3, 6, 7}));
     }
 
 }

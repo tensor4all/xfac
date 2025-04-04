@@ -49,7 +49,7 @@ TEST_CASE( "Test tensor tree" )
         ci.iterate(1,0);
 
         vector<double> x = {0.2};
-        assert ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
+        REQUIRE ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
     }
 
     SECTION( "random piv" )
@@ -84,7 +84,7 @@ TEST_CASE( "Test tensor tree" )
         ci.iterate(1,0);
 
         vector<double> x = {0.3, 0.2, 0.7};
-        assert ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
+        REQUIRE ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
     }
 
     SECTION( "cos" )
@@ -103,7 +103,7 @@ TEST_CASE( "Test tensor tree" )
         ci.iterate(1,0);
 
         vector<double> x = {0.3, 0.2, 0.7};
-        assert ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
+        REQUIRE ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
     }
 
     SECTION( "exp" )
@@ -120,7 +120,7 @@ TEST_CASE( "Test tensor tree" )
         ci.iterate(1,0);
 
         vector<double> x = {0.3, 0.2, 0.7};
-        assert ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
+        REQUIRE ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
     }
 
 
@@ -135,7 +135,7 @@ TEST_CASE( "Test tensor tree" )
                 for (auto j=0u; j<A.n_cols; j++){
                     for (auto l=0u; l<A.n_slices; l++){
                         //std::cout << "ijl= " << i << " " << j << " " << l << " "<< A(i, j, l) << " "<<  B(l, i, j)<<"\n";
-                        assert(abs(A(i, j, l) - B(l, i, j)) <= abstol);
+                        REQUIRE(abs(A(i, j, l) - B(l, i, j)) <= abstol);
                     }
                 }
             }
@@ -146,7 +146,7 @@ TEST_CASE( "Test tensor tree" )
             for (auto i=0u; i<A.n_rows; i++){
                 for (auto j=0u; j<A.n_cols; j++){
                     for (auto l=0u; l<A.n_slices; l++){
-                        assert(abs(A(i, j, l) - B(i, l, j)) <= abstol);
+                        REQUIRE(abs(A(i, j, l) - B(i, l, j)) <= abstol);
                     }
                 }
             }
@@ -156,7 +156,7 @@ TEST_CASE( "Test tensor tree" )
             for (auto i=0u; i<A.n_rows; i++){
                 for (auto j=0u; j<A.n_cols; j++){
                     for (auto l=0u; l<A.n_slices; l++){
-                        assert(abs(A(i, j, l) - B(i, j, l)) <= abstol);
+                        REQUIRE(abs(A(i, j, l) - B(i, j, l)) <= abstol);
                     }
                 }
             }
@@ -174,7 +174,7 @@ TEST_CASE( "Test tensor tree" )
                 for (auto j=0u; j<A.n_cols; j++){
                     for (auto l=0u; l<A.n_slices; l++){
                         //std::cout << "ijl= " << i << " " << j << " " << l << " "<< A(i, j, l) << " "<<  B(l,j,i)<<"\n";
-                        assert(abs(A(i, j, l) - B(l, j, i)) <= abstol);
+                        REQUIRE(abs(A(i, j, l) - B(l, j, i)) <= abstol);
                     }
                 }
             }
@@ -185,7 +185,7 @@ TEST_CASE( "Test tensor tree" )
             for (auto i=0u; i<A.n_rows; i++){
                 for (auto j=0u; j<A.n_cols; j++){
                     for (auto l=0u; l<A.n_slices; l++){
-                        assert(abs(A(i, j, l) - B(i, l, j)) <= abstol);
+                        REQUIRE(abs(A(i, j, l) - B(i, l, j)) <= abstol);
                     }
                 }
             }
@@ -195,7 +195,7 @@ TEST_CASE( "Test tensor tree" )
             for (auto i=0u; i<A.n_rows; i++){
                 for (auto j=0u; j<A.n_cols; j++){
                     for (auto l=0u; l<A.n_slices; l++){
-                        assert(abs(A(i, j, l) - B(i, j, l)) <= abstol);
+                        REQUIRE(abs(A(i, j, l) - B(i, j, l)) <= abstol);
                     }
                 }
             }
@@ -214,7 +214,7 @@ TEST_CASE( "Test tensor tree" )
                 for (auto j=0u; j<A.n_cols; j++){
                     for (auto l=0u; l<A.n_slices; l++){
                         auto jl = j + l * A.n_cols;
-                        assert(abs(A(i, j, l) - B(jl, i)) <= abstol);
+                        REQUIRE(abs(A(i, j, l) - B(jl, i)) <= abstol);
                     }
                 }
             }
@@ -225,7 +225,7 @@ TEST_CASE( "Test tensor tree" )
                 for (auto j=0u; j<A.n_cols; j++){
                     for (auto l=0u; l<A.n_slices; l++){
                         auto il = i + l * A.n_rows;
-                        assert(abs(A(i, j, l) - B(il, j)) <= abstol);
+                        REQUIRE(abs(A(i, j, l) - B(il, j)) <= abstol);
                     }
                 }
             }
@@ -236,7 +236,7 @@ TEST_CASE( "Test tensor tree" )
                 for (auto j=0u; j<A.n_cols; j++){
                     for (auto l=0u; l<A.n_slices; l++){
                         auto ij = i + j * A.n_rows;
-                        assert(abs(A(i, j, l) - B(ij, l)) <= abstol);
+                        REQUIRE(abs(A(i, j, l) - B(ij, l)) <= abstol);
                     }
                 }
             }
@@ -257,7 +257,7 @@ TEST_CASE( "Test tensor tree" )
                     for (auto k=0u; k<B.n_elem; k++){
                         sum += A(k, i, j) * B(k);
                     }
-                    assert(abs(C(0, i, j) - sum) <= abstol);
+                    REQUIRE(abs(C(0, i, j) - sum) <= abstol);
                 }
             }
         }
@@ -272,7 +272,7 @@ TEST_CASE( "Test tensor tree" )
                     for (auto k=0u; k<B.n_elem; k++){
                         sum += A(i, k, j) * B(k);
                     }
-                    assert(abs(C(i, 0, j) - sum) <= abstol);
+                    REQUIRE(abs(C(i, 0, j) - sum) <= abstol);
                 }
             }
         }
@@ -287,7 +287,7 @@ TEST_CASE( "Test tensor tree" )
                     for (auto k=0u; k<B.n_elem; k++){
                         sum += A(i, j, k) * B(k);
                     }
-                    assert(abs(C(i, j, 0) - sum) <= abstol);
+                    REQUIRE(abs(C(i, j, 0) - sum) <= abstol);
                 }
             }
         }
@@ -308,7 +308,7 @@ TEST_CASE( "Test tensor tree" )
                         for (auto k=0u; k<B.n_rows; k++){
                             sum += A(k, j, l) * B(k, i);
                         }
-                        assert(abs(C(i, j, l) - sum) <= abstol);
+                        REQUIRE(abs(C(i, j, l) - sum) <= abstol);
                     }
                 }
             }
@@ -324,7 +324,7 @@ TEST_CASE( "Test tensor tree" )
                         for (auto k=0u; k<B.n_rows; k++){
                             sum += A(i, k, l) * B(k, j);
                         }
-                        assert(abs(C(i, j, l) - sum) <= abstol);
+                        REQUIRE(abs(C(i, j, l) - sum) <= abstol);
                     }
                 }
             }
@@ -340,7 +340,7 @@ TEST_CASE( "Test tensor tree" )
                         for (auto k=0u; k<B.n_rows; k++){
                             sum += A(i, j, k) * B(k, l);
                         }
-                        assert(abs(C(i, j, l) - sum) <= abstol);
+                        REQUIRE(abs(C(i, j, l) - sum) <= abstol);
                     }
                 }
             }
@@ -362,7 +362,7 @@ TEST_CASE( "Test tensor tree" )
                         for (auto k=0u; k<B.n_cols; k++){
                             sum += B(i, k) * A(k, j, l);
                         }
-                        assert(abs(C(i, j, l) - sum) <= abstol);
+                        REQUIRE(abs(C(i, j, l) - sum) <= abstol);
                     }
                 }
             }
@@ -378,7 +378,7 @@ TEST_CASE( "Test tensor tree" )
                         for (auto k=0u; k<B.n_cols; k++){
                             sum += B(j, k) * A(i, k, l);
                         }
-                        assert(abs(C(i, j, l) - sum) <= abstol);
+                        REQUIRE(abs(C(i, j, l) - sum) <= abstol);
                     }
                 }
             }
@@ -395,7 +395,7 @@ TEST_CASE( "Test tensor tree" )
                         for (auto k=0u; k<B.n_cols; k++){
                             sum += B(l, k) * A(i, j, k);
                         }
-                        assert(abs(C(i, j, l) - sum) <= abstol);
+                        REQUIRE(abs(C(i, j, l) - sum) <= abstol);
                     }
                 }
             }
