@@ -154,8 +154,8 @@ struct TensorTreeCI {
     /// update the pivots on bond from node *from* to node *to* using the Pi matrix.
     void dmrg2_updatePivotAt(int from, int to)
     {
-        IndexSet<MultiIndex> I = kronecker(from, to);
-        IndexSet<MultiIndex> J = kronecker(to, from);
+        IndexSet<MultiIndex> I = set_union(I0[{from, to}], kronecker(from, to));
+        IndexSet<MultiIndex> J = set_union(I0[{to, from}], kronecker(to, from));
 
         auto ci=CURDecomp<T> { f.matfun2(I, J), I.pos(Iset[{from, to}]), J.pos(Iset[{to, from}]), true, param };
 
@@ -165,16 +165,17 @@ struct TensorTreeCI {
         P[{to, from}] = P[{from, to}].st();
         tt.M.at(from) = get_T3(from);
 
-        // leaves to root
+        // build the TP^{-1} tensor at node *from*
         arma::Mat<T> t3mat = cubeToMat(tt.M.at(from), tree.neigh.at(from).pos(to));
         auto pos = cubeToMatPos(tt.M.at(from), tree.neigh.at(from).pos(to));
         arma::Mat<T> TP1 = compute_CU_on_rows(t3mat, P[{from, to}]);
         auto tp1_tmp = arma::Cube<T>(TP1.memptr(), pos[0], pos[1], pos[2], true);
         tt.M.at(from) = reshape_cube2(tp1_tmp, tree.neigh.at(from).pos(to));
 
+        // build the T tensor at node *to*
         tt.M.at(to)=get_T3(to);
 
-        //collectPivotError(from, to, ci.pivotErrors());
+        collectPivotError(from, to, ci.pivotErrors());
     }
 
     /// add global pivots. The tt is not super stable anymore. For that call makeCanonical() afterward.
@@ -226,6 +227,9 @@ protected:
     /// update the pivots at bond b, the dmrg can be 0,1,2.
     void updatePivotAt(int from, int to, int dmrg=2)
     {
+        for(auto const& id:Iset[{from, to}].from_int()) I0[{from, to}].push_back(id); // update pivot history
+        for(auto const& id:Iset[{to, from}].from_int()) I0[{to, from}].push_back(id);
+
         switch (dmrg) {
         case 0: dmrg0_updatePivotAt(from,to); break;
         //case 1: dmrg1_updatePivotAt(from, to); break;
@@ -279,6 +283,7 @@ protected:
 
 private:
     std::map<std::pair<int,int>, vector<double>> pivotErrorAll;           ///< The pivot error list for each bonds
+    std::map<std::pair<int,int>, IndexSet<MultiIndex> > I0;               ///< Historical lists of accepted pivots for each site
 
 
 };
