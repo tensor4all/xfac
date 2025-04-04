@@ -68,9 +68,13 @@ public:
     /// return pair of nodes {from,to} with ordering: root -> leaves
     std::vector<std::pair<int,int>> rootToLeaves() const {return rootToLeaves(root);};
     std::vector<std::pair<int,int>> rootToLeaves(int root) const
+    // this method climbes partly back to root in order to reach one leaf from the other
     {
+        std::vector<int> path;
+        walk_depth_first(path,root);
         std::vector<std::pair<int,int>> out;
-        walk_depth_first(out,root);
+        for (int i=0u; i+1<path.size(); i++)
+            out.push_back({path[i],path[i+1]});
         return out;
     }
 
@@ -83,17 +87,23 @@ public:
         return out;
     }
 
-/*
-    // same as above, but this method climbes partly back to root in order to reach one leaf from the other
-    std::vector<std::pair<int,int>> rootToLeaves(int root=0) const
+/*    /// return pair of nodes {from,to} with ordering: root -> leaves
+    std::vector<std::pair<int,int>> rootToLeaves() const {return rootToLeaves(root);};
+    std::vector<std::pair<int,int>> rootToLeaves(int root) const
     {
-        std::vector<int> path;
-        walk_depth_first(path,root);
         std::vector<std::pair<int,int>> out;
-        for (int i=0u; i+1<path.size(); i++)
-            out.push_back({path[i],path[i+1]});
+        walk_depth_first(out,root);
         return out;
     }
+    void walk_depth_first(std::vector<std::pair<int,int>>& path, int nodeid, int parent=-1) const
+    {
+        if (parent!=-1) path.push_back({parent, nodeid});
+        for ( auto n: this -> neigh.at(nodeid).from_int() )
+            if (n!=parent) walk_depth_first(path, n, nodeid);
+    }
+*/
+
+  private:
 
     void walk_depth_first(std::vector<int>& path, int nodeid, int parent=-1) const
     {
@@ -101,16 +111,6 @@ public:
         for ( auto n: this -> neigh.at(nodeid).from_int() )
             if (n!=parent) walk_depth_first(path, n, nodeid);
         if (parent!=-1) path.push_back(parent);
-    }
-*/
-
-  private:
-
-    void walk_depth_first(std::vector<std::pair<int,int>>& path, int nodeid, int parent=-1) const
-    {
-        if (parent!=-1) path.push_back({parent, nodeid});
-        for ( auto n: this -> neigh.at(nodeid).from_int() )
-            if (n!=parent) walk_depth_first(path, n, nodeid);
     }
 
     void leaves_to_root(std::vector<std::pair<int,int>>& path, int nodeid, int parent=-1) const
