@@ -78,8 +78,7 @@ struct TensorTreeCI {
 
         addPivotsAllBonds({param.pivot1});
         enrich_initialization();
-
-        //iterate(1,0); // just to define tt
+        iterate(1,0); // just to define tt  // TODO: needed for enrich_initialization? right now redundant as also in addPivotsAllBonds
     }
 
     /// Return the 3-leg T-tensor T_l, where l is the node index.
@@ -128,10 +127,7 @@ struct TensorTreeCI {
     void iterate(int nIter=1, int dmrg_type=2)
     {
         for(auto i=0; i<nIter; i++) {
-            if (cIter%2==0)
-                for(auto [from,to]:tree.leavesToRoot()) { center=to; updatePivotAt(from, to, dmrg_type); }
-            else
-                for(auto [from,to]:tree.rootToLeaves()) { center=to; updatePivotAt(from, to, dmrg_type); }
+            for(auto [from,to]:tree.rootToLeaves()) { center=to; updatePivotAt(from, to, dmrg_type); }
             cIter++;
         }
     }
@@ -152,8 +148,7 @@ struct TensorTreeCI {
         auto tp1_tmp = arma::Cube<T>(TP1.memptr(), pos[0], pos[1], pos[2], true);
         tt.M.at(from) = reshape_cube2(tp1_tmp, tree.neigh.at(from).pos(to));
 
-        if (to == tree.root)
-            tt.M.at(to)=get_T3(to);
+        tt.M.at(to)=get_T3(to);
     }
 
     /// update the pivots on bond from node *from* to node *to* using the Pi matrix.
@@ -162,7 +157,7 @@ struct TensorTreeCI {
         IndexSet<MultiIndex> I = kronecker(from, to);
         IndexSet<MultiIndex> J = kronecker(to, from);
 
-        auto ci=CURDecomp<T> { f.matfun2(I, J), I.pos(Iset[{from, to}]), J.pos(Iset[{to, from}]), cIter%2==0, param };
+        auto ci=CURDecomp<T> { f.matfun2(I, J), I.pos(Iset[{from, to}]), J.pos(Iset[{to, from}]), true, param };
 
         Iset[{from, to}]=I.at(ci.row_pivots());
         Iset[{to, from}]=J.at(ci.col_pivots());
@@ -177,12 +172,7 @@ struct TensorTreeCI {
         auto tp1_tmp = arma::Cube<T>(TP1.memptr(), pos[0], pos[1], pos[2], true);
         tt.M.at(from) = reshape_cube2(tp1_tmp, tree.neigh.at(from).pos(to));
 
-
-        // TODO: root to leaves
-
-        // TODO: root and leaves boundaries
-        if (to == tree.root)
-            tt.M.at(to)=get_T3(to);
+        tt.M.at(to)=get_T3(to);
 
         //collectPivotError(from, to, ci.pivotErrors());
     }
@@ -191,7 +181,7 @@ struct TensorTreeCI {
     void addPivotsAllBonds(vector<vector<int>> const& pivots)
     {
         for (auto [from,to]:tree.leavesToRoot()) addPivotsAt(pivots, from, to);
-        //iterate(1,0);
+        iterate(1,0);
     }
 
     /// add these pivots at a given bond b. The tt is not touched.

@@ -30,7 +30,7 @@ TEST_CASE( "Test tensor tree" )
         ci.iterate(1);
 
         vector<double> x = {0.2};
-        std::cout << "res= " << ci.tt.eval(grid.coord_to_id(x)) << " , res_ref= " << func(x) <<  "\n";
+        REQUIRE ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
     }
 
     SECTION( "cos1d" )
@@ -46,7 +46,6 @@ TEST_CASE( "Test tensor tree" )
 
         auto ci=TensorTreeCI<double>(tfunc, tree, grid.tensorDims(), {.pivot1=vector(grid.tensorLen, 0)});
         ci.addPivotsAllBonds({vector(grid.tensorLen, 1)});
-        ci.iterate(1,0);
 
         vector<double> x = {0.2};
         REQUIRE ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
@@ -79,9 +78,7 @@ TEST_CASE( "Test tensor tree" )
         }
 
         auto ci=TensorTreeCI<double>(tfunc, tree, grid.tensorDims(), {.pivot1=vector(grid.tensorLen, 0)});
-
         ci.addPivotsAllBonds(pivots);
-        ci.iterate(1,0);
 
         vector<double> x = {0.3, 0.2, 0.7};
         REQUIRE ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
@@ -100,7 +97,6 @@ TEST_CASE( "Test tensor tree" )
 
         auto ci=TensorTreeCI<double>(tfunc, tree, grid.tensorDims(), {.pivot1=vector(grid.tensorLen, 0)});
         ci.addPivotsAllBonds({vector(grid.tensorLen, 1)});
-        ci.iterate(1,0);
 
         vector<double> x = {0.3, 0.2, 0.7};
         REQUIRE ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
@@ -117,7 +113,6 @@ TEST_CASE( "Test tensor tree" )
 
         auto tree = makeTuckerTree(dim, nBit);
         auto ci=TensorTreeCI<double>(tfunc, tree, grid.tensorDims(), {.pivot1=vector(grid.tensorLen, 0)});
-        ci.iterate(1,0);
 
         vector<double> x = {0.3, 0.2, 0.7};
         REQUIRE ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
