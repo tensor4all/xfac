@@ -77,6 +77,8 @@ struct TensorTreeCI {
         }
 
         addPivotsAllBonds({param.pivot1});
+        enrich_initialization();
+
         //iterate(1,0); // just to define tt
     }
 
@@ -136,7 +138,7 @@ struct TensorTreeCI {
 
     void dmrg0_updatePivotAt(int from, int to)
     {
-        auto ci=CURDecomp<T> { f.eval2(Iset[{from, to}], Iset[{to, from}]), cIter%2==0, param.reltol, param.bondDim };
+        auto ci=CURDecomp<T> { f.eval2(Iset[{from, to}], Iset[{to, from}]), true, param.reltol, param.bondDim };
 
         Iset[{from, to}] = Iset[{from, to}].at(ci.row_pivots());
         Iset[{to, from}] = Iset[{to, from}].at(ci.col_pivots());
@@ -207,6 +209,29 @@ struct TensorTreeCI {
     }
 
 protected:
+
+    /// add all pair around virtual indices, to avoid rank-1 problem
+    void enrich_initialization()
+    {
+        vector<int> nvnodes; // neighbor to a virtual
+        for(auto i=0u; i<tree.neigh.size(); i++) {
+            if(tree.nodes.contains(i)) continue;
+            for(auto j:tree.neigh.at(i).from_int())
+                if (tree.nodes.contains(j)) nvnodes.push_back(j);
+        }
+        vector<vector<int>> pivots;
+        for(auto i:nvnodes)
+            for(auto j:nvnodes)
+                if (i!=j)
+                    for(const MultiIndex& xi:localSet[i].from_int())
+                        for(const MultiIndex& xj:localSet[j].from_int()) {
+                            MultiIndex mi {param.pivot1.begin(), param.pivot1.end()};
+                            add_inplace(mi,xi);
+                            add_inplace(mi,xj);
+                            pivots.push_back({mi.begin(),mi.end()});
+                        }
+        addPivotsAllBonds(pivots);
+    }
 
     /// update the pivots at bond b, the dmrg can be 0,1,2.
     void updatePivotAt(int from, int to, int dmrg=2)
