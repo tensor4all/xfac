@@ -15,6 +15,25 @@ using cmpx=std::complex<double>;
 
 TEST_CASE( "Test tensor CI 2" )
 {
+
+    SECTION( "cos1d" )
+    {
+        int nBit = 15;
+        int dim=1;
+        grid::Quantics grid(0., 1., nBit, dim);
+
+        function func=[&](vector<double> const& x) {return cos(x[0]);};
+        function tfunc = [&](vector<int> xi){ return func(grid.id_to_coord(xi));};
+
+        auto ci=TensorCI2<double>(tfunc, grid.tensorDims(), {.pivot1=vector(grid.tensorLen, 0)});
+        ci.iterate(10);
+
+        vector<double> x = {0.2};
+        auto tt = ci.tt;
+        std::cout << "res= " << tt.eval(grid.coord_to_id(x)) << " , res_ref= " << func(x) <<  "\n";
+
+    }
+
     SECTION( "cos" )
     {
         int dim=5, d=10;
