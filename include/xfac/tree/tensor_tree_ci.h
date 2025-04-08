@@ -76,8 +76,7 @@ struct TensorTreeCI {
             }
         }
 
-        addPivotsAllBonds({param.pivot1});
-        enrich_initialization();
+        addPivotsAllBonds(enrich_pivot1());
         iterate(1,0); // just to define tt  // TODO: needed for enrich_initialization? right now redundant as also in addPivotsAllBonds
     }
 
@@ -113,11 +112,15 @@ struct TensorTreeCI {
     }
 
 
-    arma::Cube<T> get_TP1(int from, int to)
+    // build the TP^{-1} tensor at node *from*
+    arma::Cube<T> get_TP1(int from, int to) const
     {
-        tt.M.at(from) = get_T3(from);
-        arma::Mat<T> Pinv = P[{from,to}].i();
-        return cube_mat(tt.M.at(from), Pinv, tree.neigh.at(from).pos(to));
+        auto M = get_T3(from);
+        arma::Mat<T> t3mat = cubeToMat(M, tree.neigh.at(from).pos(to));
+        auto pos = cubeToMatPos(M, tree.neigh.at(from).pos(to));
+        arma::Mat<T> TP1 = compute_CU_on_rows(t3mat, P.at({from, to}));
+        auto tp1_tmp = arma::Cube<T>(TP1.memptr(), pos[0], pos[1], pos[2], true);
+        return reshape_cube2(tp1_tmp, tree.neigh.at(from).pos(to));
     }
 
     /// returns the number of physical legs of the tensor tree
@@ -139,15 +142,7 @@ struct TensorTreeCI {
         Iset[{from, to}] = Iset[{from, to}].at(ci.row_pivots());
         Iset[{to, from}] = Iset[{to, from}].at(ci.col_pivots());
         P[{from, to}] = ci.PivotMatrixTri();
-        P[{to, from}] = P[{from, to}].st();
-
-        tt.M.at(from) = get_T3(from);
-        arma::Mat<T> t3mat = cubeToMat(tt.M.at(from), tree.neigh.at(from).pos(to));
-        auto pos = cubeToMatPos(tt.M.at(from), tree.neigh.at(from).pos(to));
-        arma::Mat<T> TP1 = compute_CU_on_rows(t3mat, P[{from, to}]);
-        auto tp1_tmp = arma::Cube<T>(TP1.memptr(), pos[0], pos[1], pos[2], true);
-        tt.M.at(from) = reshape_cube2(tp1_tmp, tree.neigh.at(from).pos(to));
-
+        tt.M.at(from) = get_TP1(from,to);
         tt.M.at(to)=get_T3(to);
     }
 
@@ -162,19 +157,8 @@ struct TensorTreeCI {
         Iset[{from, to}]=I.at(ci.row_pivots());
         Iset[{to, from}]=J.at(ci.col_pivots());
         P[{from,to}]=ci.PivotMatrixTri();
-        P[{to, from}] = P[{from, to}].st();
-        tt.M.at(from) = get_T3(from);
-
-        // build the TP^{-1} tensor at node *from*
-        arma::Mat<T> t3mat = cubeToMat(tt.M.at(from), tree.neigh.at(from).pos(to));
-        auto pos = cubeToMatPos(tt.M.at(from), tree.neigh.at(from).pos(to));
-        arma::Mat<T> TP1 = compute_CU_on_rows(t3mat, P[{from, to}]);
-        auto tp1_tmp = arma::Cube<T>(TP1.memptr(), pos[0], pos[1], pos[2], true);
-        tt.M.at(from) = reshape_cube2(tp1_tmp, tree.neigh.at(from).pos(to));
-
-        // build the T tensor at node *to*
+        tt.M.at(from) = get_TP1(from,to);
         tt.M.at(to)=get_T3(to);
-
         collectPivotError(from, to, ci.pivotErrors());
     }
 
@@ -202,7 +186,7 @@ struct TensorTreeCI {
 protected:
 
     /// add all pair around virtual indices, to avoid rank-1 problem
-    void enrich_initialization()
+    vector<vector<int>> enrich_pivot1() const
     {
         vector<int> nvnodes; // neighbor to a virtual
         for(auto i=0u; i<tree.neigh.size(); i++) {
@@ -210,7 +194,7 @@ protected:
             for(auto j:tree.neigh.at(i).from_int())
                 if (tree.nodes.contains(j)) nvnodes.push_back(j);
         }
-        vector<vector<int>> pivots;
+        vector<vector<int>> pivots={param.pivot1};
         for(auto i:nvnodes)
             for(auto j:nvnodes)
                 if (i!=j)
@@ -221,7 +205,7 @@ protected:
                             add_inplace(mi,xj);
                             pivots.push_back({mi.begin(),mi.end()});
                         }
-        addPivotsAllBonds(pivots);
+        return pivots;
     }
 
     /// update the pivots at bond b, the dmrg can be 0,1,2.
@@ -253,25 +237,6 @@ protected:
         return Is;
     }
 
-    IndexSet<MultiIndex> ordered_kronecker(int from, int to) const
-    /*
-     *  $\mathcal{I}_{from} = (\sum_{i \in N} \mathcal{Iset}_{i, from}) \oplus \mathcal{localSet}_{from}$,
-     *  where $N$ are the direct neighbours of the site *from*, except one specific neighbours which we label as *to*.
-     *  The sum has to be understood in a $\oplus$ sense.
-     */
-    {
-        IndexSet<MultiIndex> Is;
-        for (auto i=0u; i<tree.neigh.at(from).size(); i++){
-            auto neighbour = (tree.neigh.at(from)).at(i);
-            Is = add(Is, Iset.at({neighbour, from}));
-        }
-        if (tree.nodes.contains(to))
-            return add(Is, localSet.at(to));
-        return Is;
-    }
-
-    void set_site_tensor(int from, int to, arma::Mat<T> const& M) { tt.M[from]=arma::Cube<T>(M.memptr(), Iset[{from,to}].size(), localSet[from].size(), Iset[{to,from}].size());  }
-
     void collectPivotError(int from, int to, vector<double> const& pe)
     {
         pivotErrorAll[{from,to}]=pe;
@@ -284,7 +249,6 @@ protected:
 private:
     std::map<std::pair<int,int>, vector<double>> pivotErrorAll;           ///< The pivot error list for each bonds
     std::map<std::pair<int,int>, IndexSet<MultiIndex> > I0;               ///< Historical lists of accepted pivots for each site
-
 
 };
 
