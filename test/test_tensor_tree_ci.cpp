@@ -15,7 +15,6 @@ using cmpx=std::complex<double>;
 TEST_CASE( "Test tensor tree" )
 {
 
-
     SECTION( "cos dmrg2" )
     {
         int nBit = 25;
@@ -29,11 +28,17 @@ TEST_CASE( "Test tensor tree" )
 
         auto tree = makeTuckerTree(dim, nBit);
 
-        auto ci=TensorTreeCI<double>(tfunc, tree, grid.tensorDims(), {.pivot1=vector(grid.tensorLen, 0)});
+        auto ci=TensorTreeCI<double>(tfunc, tree, grid.tensorDims());
         ci.iterate(10);
 
+        // test function interpolation
         vector<double> x = {0.3, 0.2, 0.7};
         REQUIRE ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
+
+        // test integration over hypercube
+        auto integ = ci.tt.sum() * grid.deltaVolume;
+        auto integ_ref = -0.0466396;  // ref result from TensorCI2 quantics
+        REQUIRE ( abs(integ - integ_ref) <= 1e-5 );
     }
 
     SECTION( "cos1d" )
@@ -46,12 +51,16 @@ TEST_CASE( "Test tensor tree" )
         function tfunc = [&](vector<int> xi){ return func(grid.id_to_coord(xi));};
 
         auto tree = makeTuckerTree(dim, nBit);
-
         auto ci=TensorTreeCI<double>(tfunc, tree, grid.tensorDims(), {.pivot1=vector(grid.tensorLen, 0)});
         ci.addPivotsAllBonds({vector(grid.tensorLen, 1)});
 
+        // test function interpolation
         vector<double> x = {0.2};
         REQUIRE ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
+
+        // test integration over hypercube
+        auto integ = ci.tt.sum() * grid.deltaVolume;
+        REQUIRE ( abs(integ - sin(1)) <= 1e-5 );
     }
 
     SECTION( "random piv" )

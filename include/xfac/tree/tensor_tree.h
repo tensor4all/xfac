@@ -31,14 +31,38 @@ arma::Mat<T> cubeToMat(arma::Cube<T> const& A, int cube_pos)
         arma::Mat<T> c(A.n_cols * A.n_slices, A.n_rows);
         for(auto i=0u; i<A.n_rows; i++){
             arma::Mat<T> ajk = A.row(i);
-            c.col(i) = arma::Col<T>(ajk.memptr(), A.n_cols * A.n_slices);;
+            c.col(i) = arma::Col<T>(ajk.memptr(), A.n_cols * A.n_slices);
         }
         return c;
     } else if (cube_pos==1) { // reshape a cube as a matrix B(ik,j)=A(i,j,k)
         arma::Mat<T> c(A.n_rows * A.n_slices, A.n_cols);
         for(auto j=0u; j<A.n_cols; j++){
             arma::Mat<T> aik = A.col(j);
-            c.col(j) = arma::Col<T>(aik.memptr(), A.n_rows * A.n_slices);;
+            c.col(j) = arma::Col<T>(aik.memptr(), A.n_rows * A.n_slices);
+        }
+        return c;
+    } else if (cube_pos==2) { // reshape a cube as a matrix B(ij,k)=A(i,j,k)
+        return arma::Mat<T>(const_cast<T*>(A.memptr()), A.n_rows*A.n_cols, A.n_slices, false);
+    } else {
+        throw std::invalid_argument("cube_pos must be 0, 1 or 2");
+    }
+}
+
+template<class T>
+arma::Mat<T> cubeToMat2(arma::Cube<T> const& A, int cube_pos)
+{
+    if (cube_pos==0) { // reshape a cube as a matrix B(ik,j)=A(i,j,k)
+        arma::Mat<T> c(A.n_rows * A.n_slices, A.n_cols);
+        for(auto j=0u; j<A.n_cols; j++){
+            arma::Mat<T> aik = A.col(j);
+            c.col(j) = arma::Col<T>(aik.memptr(), A.n_rows * A.n_slices);
+        }
+        return c;
+    } else if (cube_pos==1) { // reshape a cube as a matrix B(jk,i)=A(i,j,k)
+        arma::Mat<T> c(A.n_cols * A.n_slices, A.n_rows);
+        for(auto i=0u; i<A.n_rows; i++){
+            arma::Mat<T> ajk = A.row(i);
+            c.col(i) = arma::Col<T>(ajk.memptr(), A.n_cols * A.n_slices);
         }
         return c;
     } else if (cube_pos==2) { // reshape a cube as a matrix B(ij,k)=A(i,j,k)
@@ -49,6 +73,7 @@ arma::Mat<T> cubeToMat(arma::Cube<T> const& A, int cube_pos)
 }
 
 
+
 template<class T>
 vector<long long unsigned int> cubeToMatPos(arma::Cube<T> const& A, int cube_pos)
 {
@@ -56,6 +81,20 @@ vector<long long unsigned int> cubeToMatPos(arma::Cube<T> const& A, int cube_pos
         return {A.n_cols, A.n_slices, A.n_rows};
     } else if (cube_pos==1) { // reshape a cube as a matrix B(ik,j)=A(i,j,k)
         return {A.n_rows, A.n_slices, A.n_cols};;
+    } else if (cube_pos==2) { // reshape a cube as a matrix B(ij,k)=A(i,j,k)
+        return {A.n_rows, A.n_cols, A.n_slices};;
+    } else {
+        throw std::invalid_argument("cube_pos must be 0, 1 or 2");
+    }
+}
+
+template<class T>
+vector<long long unsigned int> cubeToMat2Pos(arma::Cube<T> const& A, int cube_pos)
+{
+    if (cube_pos==0) { // reshape a cube as a matrix B(ik,j)=A(i,j,k)
+        return {A.n_rows, A.n_slices, A.n_cols};
+    } else if (cube_pos==1) { // reshape a cube as a matrix B(jk,i)=A(i,j,k)
+        return {A.n_cols, A.n_slices, A.n_rows};;
     } else if (cube_pos==2) { // reshape a cube as a matrix B(ij,k)=A(i,j,k)
         return {A.n_rows, A.n_cols, A.n_slices};;
     } else {
@@ -241,8 +280,70 @@ struct TensorTree {
 
     /// evaluate the tensor train at a given multi index. Same as eval()
     T operator()(vector<int> const& id) const { return eval(id); }
+
+    /// compute the sum of the tensor train
+    T sum() const;
+
 };
 
+
+template<class T>
+class TTree_sum {
+public:
+
+    TopologyTree tree;
+    int neigh, root;
+    arma::Row<T> L;  ///< left product at the root site
+    std::map<std::pair<int,int>, arma::Col<T>> R;  ///< right product from the leaf sites
+
+    TTree_sum(){}
+    TTree_sum(TensorTree<T> const& tt)
+        : tree{tt.tree}
+    {
+        auto path = tree.leavesToRoot();
+        std::tie(neigh, root) = path.back();
+        sumRoot(root, neigh, tt.M[root]);
+        for(auto [from, to] : path)
+            sumLeaveToRoot(from, to, tt.M[from]);
+    }
+    /// sum up the the tensors from the root node at *from* to a neighbouring node *to*
+    void sumRoot(int from, int to, arma::Cube<T> const& M)
+    {
+        auto LM = cubeToMat(M, tree.neigh.at(from).pos(to));
+        auto w = arma::Row<T>(LM.n_rows, arma::fill::ones);
+        L = arma::conv_to<arma::Row<T>>::from(w * LM);
+    }
+
+    /// sum up the the tensors from node *from* to node *to* in the direction leave to root.
+    void sumLeaveToRoot(int from, int to, arma::Cube<T> const& M)
+    {
+        vector<int> neighbours;
+        for (auto neighbour : tree.neigh.at(from).from_int())
+            if (neighbour != to)
+                neighbours.push_back(neighbour);
+
+        if (neighbours.size() == 0) {  // leaf node
+            arma::Col<T> Rt(1, arma::fill::ones);
+            arma::Mat<T> MRv = cubeToMat2(M, tree.neigh.at(from).pos(to)) * Rt;
+            auto pos = cubeToMat2Pos(M, tree.neigh.at(from).pos(to));
+            auto MR = arma::Mat<T>(MRv.memptr(), pos[0], pos[1], true);
+            auto w = arma::Col<T>(MR.n_cols, arma::fill::ones);
+            R[{from, to}] = MR * w;
+        } else {  // physical or artificial node
+            arma::Mat<T> MRv = cubeToMat(M, tree.neigh.at(from).pos(neighbours[0])) * R.at({neighbours[0], from});
+            auto pos = cubeToMatPos(M, tree.neigh.at(from).pos(neighbours[0]));
+            auto MR = arma::Mat<T>(MRv.memptr(), pos[0], pos[1], true);
+            arma::Col<T> w = (neighbours.size() == 2) ? R[{neighbours[1], from}] : arma::Col<T>(MR.n_cols, arma::fill::ones);  // true: artificial node, false physical node
+            R[{from, to}] = MR * w;
+        }
+    }
+
+    T value() const { return arma::dot(L, R.at({neigh, root})); }
+
+};
+
+template<class T>
+T TensorTree<T>::sum() const { return TTree_sum<T>(*this).value(); }
 
 }// end namespace xfac
 
