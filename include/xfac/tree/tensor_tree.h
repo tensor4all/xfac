@@ -294,51 +294,47 @@ public:
     TopologyTree tree;
     int neigh, root;
     arma::Row<T> L;  ///< left product at the root site
-    std::map<std::pair<int,int>, arma::Col<T>> R;  ///< right product from the leaf sites
+    std::vector<arma::Cube<T>> R;  ///< right product from the leaf sites
 
     TTree_sum(){}
     TTree_sum(TensorTree<T> const& tt)
         : tree{tt.tree}
+        , R{tt.M}
     {
         auto path = tree.leavesToRoot();
         std::tie(neigh, root) = path.back();
-        sumRoot(root, neigh, tt.M[root]);
+        path.pop_back();
+        L = sumRoot(root, neigh, tt.M[root]);
+        for(auto node: tree.nodes)
+            R[node] = sumPhysicalLeg(node, tt.M[node]);
         for(auto [from, to] : path)
-            sumLeaveToRoot(from, to, tt.M[from]);
+            R[to] = sumLeaveToRoot(from, to);
+
     }
+
     /// sum up the the tensors from the root node at *from* to a neighbouring node *to*
-    void sumRoot(int from, int to, arma::Cube<T> const& M)
+    arma::Row<T> sumRoot(int from, int to, arma::Cube<T> const& M)
     {
         auto LM = cubeToMat(M, tree.neigh.at(from).pos(to));
         auto w = arma::Row<T>(LM.n_rows, arma::fill::ones);
-        L = arma::conv_to<arma::Row<T>>::from(w * LM);
+        return w * LM;
+    }
+
+    /// sum up the local set of the physical node, it corresponds always to the last tensor leg
+    arma::Cube<T> sumPhysicalLeg(int node, arma::Cube<T> const& M)
+    {
+        auto w = arma::Col<T>(M.n_slices, arma::fill::ones);
+        return cube_vec(M, w, 2);
     }
 
     /// sum up the the tensors from node *from* to node *to* in the direction leave to root.
-    void sumLeaveToRoot(int from, int to, arma::Cube<T> const& M)
+    arma::Cube<T> sumLeaveToRoot(int from, int to)
     {
-        vector<int> neighbours;
-        for (auto neighbour : tree.neigh.at(from).from_int())
-            if (neighbour != to)
-                neighbours.push_back(neighbour);
-
-        if (neighbours.size() == 0) {  // leaf node
-            arma::Col<T> Rt(1, arma::fill::ones);
-            arma::Mat<T> MRv = cubeToMat2(M, tree.neigh.at(from).pos(to)) * Rt;
-            auto pos = cubeToMat2Pos(M, tree.neigh.at(from).pos(to));
-            auto MR = arma::Mat<T>(MRv.memptr(), pos[0], pos[1], true);
-            auto w = arma::Col<T>(MR.n_cols, arma::fill::ones);
-            R[{from, to}] = MR * w;
-        } else {  // physical or artificial node
-            arma::Mat<T> MRv = cubeToMat(M, tree.neigh.at(from).pos(neighbours[0])) * R.at({neighbours[0], from});
-            auto pos = cubeToMatPos(M, tree.neigh.at(from).pos(neighbours[0]));
-            auto MR = arma::Mat<T>(MRv.memptr(), pos[0], pos[1], true);
-            arma::Col<T> w = (neighbours.size() == 2) ? R[{neighbours[1], from}] : arma::Col<T>(MR.n_cols, arma::fill::ones);  // true: artificial node, false physical node
-            R[{from, to}] = MR * w;
-        }
+        arma::Col<T> v = arma::vectorise(R[from]);
+        return cube_vec(R[to], v, tree.neigh.at(to).pos(from));
     }
 
-    T value() const { return arma::dot(L, R.at({neigh, root})); }
+    T value() const { arma::Col<T> Rv = R.at(neigh); return arma::dot(L, Rv); }
 
 };
 
