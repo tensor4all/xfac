@@ -15,6 +15,36 @@ using cmpx=std::complex<double>;
 TEST_CASE( "Test tensor tree" )
 {
 
+    SECTION( "oscintegral" )  // integral from the xfac paper, Eq. (5) and Fig. 2
+    {
+        int nBit = 30;
+        int dim = 10;
+        grid::Quantics grid(-1., 1., nBit, dim);
+
+        function func=[&](vector<double> const& x) {
+            vector<double> x2;
+            for (auto xi : x) x2.push_back(xi * xi);
+            auto sum=accumulate(x.begin(), x.end(), 0.0);
+            auto sum2=accumulate(x2.begin(), x2.end(), 0.0);
+            return 1000 * cos(10 * sum2) * exp(-pow(sum, 4) / 1000);};
+        function tfunc = [&](vector<int> xi){ return func(grid.id_to_coord(xi));};
+
+        auto tree = makeTuckerTree(dim, nBit);
+
+        auto ci=TensorTreeCI<double>(tfunc, tree, grid.tensorDims(), {.bondDim=60});
+
+        string filename = "oscintegral";
+        std::ofstream outfile(filename + "_nbit_" + std::to_string(nBit) + ".dat");
+
+        for (auto i=0u; i<5; i++){
+            ci.iterate();
+            auto integ = ci.tt.sum() * grid.deltaVolume;
+            std::cout << std::setprecision(16) << "i= " << i << " integ= " << integ << " neval= " << ci.f.nEval() << " pivot-err= " << ci.pivotError.back() << std::endl;
+            outfile << std::setprecision(16) << i << " " << integ << " " << ci.f.nEval() << " " << ci.pivotError.back() << std::endl;
+        }
+        outfile.close();
+    }
+
     SECTION( "cos dmrg2" )
     {
         int nBit = 25;
