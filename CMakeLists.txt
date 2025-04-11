@@ -32,6 +32,7 @@ add_library(${PROJECT_NAME} STATIC
     README.md
     empty.cpp
     ${header}
+    include/xfac/cubemat_helper.h
 )
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)

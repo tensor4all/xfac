@@ -8,6 +8,8 @@ add_executable(${PROJECT_NAME}_test
     test_ci_converter.cpp
     test_tree.cpp
     test_tensor_tree_ci.cpp
+    test_cubemat_helper.cpp
+    test_benchmark_problems.cpp
 )
 
 target_include_directories(${PROJECT_NAME}_test INTERFACE Catch2::Catch2)

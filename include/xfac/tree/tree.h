@@ -5,13 +5,10 @@
 #include <vector>
 #include <map>
 #include <set>
-#define ARMA_DONT_USE_OPENMP
-#include <armadillo>
+#include <stdexcept>
 #include <cassert>
 
 namespace xfac {
-
-
 
 class TopologyTree {
 public:
@@ -53,18 +50,6 @@ public:
         return std::make_pair(s0p, s1p);
     }
 
-    /// check if data structure is a tree
-    bool isTree() const {return isTree(root);};
-    bool isTree(int root) const
-    {
-        std::set<int> connectedNodes;
-        for (auto [from, to] : rootToLeaves(root)) {
-            connectedNodes.insert(from);
-            connectedNodes.insert(to);
-        }
-        return connectedNodes.size() == size() ? true : false;
-    }
-
     /// return pair of nodes {from,to} with ordering: root -> leaves
     std::vector<std::pair<int,int>> rootToLeaves() const {return rootToLeaves(root);};
     std::vector<std::pair<int,int>> rootToLeaves(int root) const
@@ -86,22 +71,6 @@ public:
         leaves_to_root(out,root);
         return out;
     }
-
-/*    /// return pair of nodes {from,to} with ordering: root -> leaves
-    std::vector<std::pair<int,int>> rootToLeaves() const {return rootToLeaves(root);};
-    std::vector<std::pair<int,int>> rootToLeaves(int root) const
-    {
-        std::vector<std::pair<int,int>> out;
-        walk_depth_first(out,root);
-        return out;
-    }
-    void walk_depth_first(std::vector<std::pair<int,int>>& path, int nodeid, int parent=-1) const
-    {
-        if (parent!=-1) path.push_back({parent, nodeid});
-        for ( auto n: this -> neigh.at(nodeid).from_int() )
-            if (n!=parent) walk_depth_first(path, n, nodeid);
-    }
-*/
 
   private:
 

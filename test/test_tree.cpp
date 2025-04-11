@@ -61,17 +61,6 @@ TEST_CASE( "Test tree" )
             std::cout << from << " " << to << " \n";
     }
 
-    SECTION( "is_tree" )
-    {
-        cout<<"test tree\n";
-        TopologyTree disconnected_graph;
-        for( auto [i,j]: vector<pair<int,int>> {{0,1}, {1,2}, {3,4}, {3,5}}) // two disconnected graphs
-            disconnected_graph.addEdge(i,j);
-
-        REQUIRE(tree.isTree());
-        REQUIRE(!disconnected_graph.isTree());
-    }
-
     SECTION( "tucker tree" )
     {
         cout<<"tucker tree\n";
@@ -80,7 +69,6 @@ TEST_CASE( "Test tree" )
 
             std::cout << "make Tucker tree: dim= " << dim << " , nBit= " << nBit <<  "\n";
             tree = makeTuckerTree(dim, nBit);
-            REQUIRE(tree.isTree());
 
             // the size follows directly from the structure of the tree
             if (dim == 1){

@@ -4,20 +4,9 @@
 #include "xfac/index_set.h"
 #include "xfac/tree/tensor_tree.h"
 #include "xfac/tensor/tensor_function.h"
-#include "xfac/tensor/tensor_train.h"  // TODO: only needed for cube_as_matrix1 and cube_as_matrix2. move them in separate include file?
+#include "xfac/cubemat_helper.h"
 
 namespace xfac {
-
-template< typename T >
-std::ostream & operator<<( std::ostream & o, const std::vector<T> & vec ) {
-    o <<  "[ ";
-    for (auto elem : vec)
-        o << elem << ", ";
-    o <<  "]";
-    return o;
-}
-
-
 
 /// Parameters of the TensorCI2 algorithm.
 struct TensorCIParam {
