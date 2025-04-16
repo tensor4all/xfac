@@ -97,7 +97,7 @@ struct TensorTreeCI {
         if(shape.size()!=3) throw std::runtime_error("tensor degree not 3 at get_T3");
 
         arma::Mat<T> data = f.eval2(Ip, Jp);
-        return arma::cube(data.memptr(), shape[0], shape[1], shape[2], true);
+        return arma::Cube<T>(data.memptr(), shape[0], shape[1], shape[2], true);
     }
 
 
