@@ -1,6 +1,13 @@
 # Cross factorization of tensors: xfac
 ![](docs/tci.png)
 
+*****
+**What's new**
+
+The xfac code now contains a tree implementation, based on `TensorCI2`.
+Check out the examples in file `test/test_benchmark_problems.cpp` to see how to use it.
+*****
+
 `xfac` is a c++ library (with python binding) to learn low-rank tensor train representations from a given tensor or function.
 The learning is made by *tensor cross interpolation*.
 Given a multidimensional function $f:\mathcal{R}^n \rightarrow \mathcal{C}$, the library can generate an accurate approximation:

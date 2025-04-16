@@ -3,7 +3,7 @@ project(xfac LANGUAGES CXX)
 
 include(GNUInstallDirs)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(XFAC_BUILD_TEST "Build the xfac test suite" OFF)
@@ -23,12 +23,16 @@ set(header
     include/xfac/tensor/auto_mpo.h
     include/xfac/tensor/tensor_ci_converter.h
     include/xfac/grid.h
+    include/xfac/tree/tree.h    
+    include/xfac/tree/tensor_tree.h
+    include/xfac/tree/tensor_tree_ci.h
 )
 
 add_library(${PROJECT_NAME} STATIC
     README.md
     empty.cpp
     ${header}
+    include/xfac/cubemat_helper.h
 )
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
