@@ -36,13 +36,12 @@ struct TensorTreeCI {
     TensorTree<T> tt;                                      ///< main output of the Tensor CI
     std::map<std::pair<int,int>, arma::Mat<T>> P;      ///< the pivot matrix in LU form for each bond
     int cIter=0;                                            ///< counter of iterations. Used for sweeping only.
-    int center=0;                                           ///< current position of the CI center
 
 
     /// constructs a rank-1 TensorCI2 from a function f:(a1,a2,...,an)->eT  where the index ai is in [0,localDim[i]).
     TensorTreeCI(function<T(vector<int>)> const& f_, TopologyTree tree_, vector<int> localDim, TensorCIParam param_={})
         : tree(tree_)
-        , f {f_}
+        , f {f_, param_.useCachedFunction, false}
         , param(param_)
         , pivotError(1)
         , localSet {localDim.size()}
@@ -66,7 +65,6 @@ struct TensorTreeCI {
         }
 
         addPivotsAllBonds(enrich_pivot1());
-        iterate(1,0); // just to define tt  // TODO: needed for enrich_initialization? right now redundant as also in addPivotsAllBonds
     }
 
     /// Return the 3-leg T-tensor T_l, where l is the node index.
@@ -96,7 +94,7 @@ struct TensorTreeCI {
 
         if(shape.size()!=3) throw std::runtime_error("tensor degree not 3 at get_T3");
 
-        arma::Mat<T> data = f.eval2(Ip, Jp);
+        arma::Mat<T> data = f.eval(Ip, Jp);
         return arma::Cube<T>(data.memptr(), shape[0], shape[1], shape[2], true);
     }
 
@@ -119,14 +117,14 @@ struct TensorTreeCI {
     void iterate(int nIter=1, int dmrg_type=2)
     {
         for(auto i=0; i<nIter; i++) {
-            for(auto [from,to]:tree.rootToLeaves()) { center=to; updatePivotAt(from, to, dmrg_type); }
+            for(auto [from,to]:tree.rootToLeaves()) { updatePivotAt(from, to, dmrg_type); }
             cIter++;
         }
     }
 
     void dmrg0_updatePivotAt(int from, int to)
     {
-        auto ci=CURDecomp<T> { f.eval2(Iset[{from, to}], Iset[{to, from}]), true, param.reltol, param.bondDim };
+        auto ci=CURDecomp<T> { f.eval(Iset[{from, to}], Iset[{to, from}]), true, param.reltol, param.bondDim };
 
         Iset[{from, to}] = Iset[{from, to}].at(ci.row_pivots());
         Iset[{to, from}] = Iset[{to, from}].at(ci.col_pivots());
@@ -141,7 +139,7 @@ struct TensorTreeCI {
         IndexSet<MultiIndex> I = set_union(I0[{from, to}], kronecker(from, to));
         IndexSet<MultiIndex> J = set_union(I0[{to, from}], kronecker(to, from));
 
-        auto ci=CURDecomp<T> { f.matfun2(I, J), I.pos(Iset[{from, to}]), J.pos(Iset[{to, from}]), true, param };
+        auto ci=CURDecomp<T> { f.matfun(I, J), I.pos(Iset[{from, to}]), J.pos(Iset[{to, from}]), true, param };
 
         Iset[{from, to}]=I.at(ci.row_pivots());
         Iset[{to, from}]=J.at(ci.col_pivots());

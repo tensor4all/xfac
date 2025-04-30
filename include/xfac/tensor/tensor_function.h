@@ -13,15 +13,22 @@ using std::vector;
 using std::function;
 
 
+
 ///< To store the tensor function f:(a1,a2,...,an)->T
 template<class T>
 struct TensorFunction {
     function<T(vector<int>)> f;
     bool useCache=false;
+    bool concatenate = true;  // use concatenation of the function argument (tensor train) or not (tensor tree)
 
-    TensorFunction(function<T(vector<int>)> f_, bool useCache_=false) : f(f_), useCache(useCache_) {}
+    TensorFunction(function<T(vector<int>)> f_, bool useCache_=false, bool concatenate_=true) : f(f_), useCache(useCache_), concatenate(concatenate_) {}
 
     T operator()(MultiIndex const& id) const { cEval+=1; return f({id.begin(),id.end()}); }
+
+    /// add two multiindices I and J
+    MultiIndex addIJ(MultiIndex const& I, MultiIndex const& J) const {
+        return (concatenate) ? I + J : add(I, J);
+    }
 
     arma::Mat<T> evalCache(vector<MultiIndex> const& I, vector<MultiIndex> const& J) const
     {
@@ -29,13 +36,13 @@ struct TensorFunction {
         vector<std::tuple<size_t,size_t, decltype(dat.begin())>> pos_eval;
         for(auto i=0u; i<I.size(); i++)
             for(auto j=0u; j<J.size(); j++) {
-                auto [it,isNew]=dat.try_emplace(I[i]+J[j]);
+                auto [it,isNew]=dat.try_emplace(addIJ(I[i], J[j]));
                 if (!isNew)
                     values(i,j)=it->second;
                 else
                     pos_eval.push_back({i,j,it});
             }
-        #pragma omp parallel for
+#pragma omp parallel for
         for(auto [i,j,it] : pos_eval)
             values(i,j)=it->second=f({it->first.begin(), it->first.end()});
         return values;
@@ -45,24 +52,10 @@ struct TensorFunction {
     {
         if (useCache) return evalCache(I,J);
         arma::Mat<T> values(I.size(), J.size(), arma::fill::none);
-        #pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2)
         for(auto i=0u; i<I.size(); i++)
             for(auto j=0u; j<J.size(); j++) {
-                MultiIndex ij=I[i]+J[j];
-                values(i,j)=f({ij.begin(), ij.end()});
-            }
-        cEval += values.size();
-        return values;
-    }
-
-    arma::Mat<T> eval2(vector<MultiIndex> const& I, vector<MultiIndex> const& J) const
-    {
-        if (useCache) return evalCache(I,J);
-        arma::Mat<T> values(I.size(), J.size(), arma::fill::none);
-        #pragma omp parallel for collapse(2)
-        for(auto i=0u; i<I.size(); i++)
-            for(auto j=0u; j<J.size(); j++) {
-                MultiIndex ij= add(I[i], J[j]);
+                MultiIndex ij=addIJ(I[i], J[j]);
                 values(i,j)=f({ij.begin(), ij.end()});
             }
         cEval += values.size();
@@ -76,17 +69,6 @@ struct TensorFunction {
             for(auto i=0u; i<Is.size(); i++) Is[i]=I[I0[i]];
             for(auto j=0u; j<Js.size(); j++) Js[j]=J[J0[j]];
             return eval(Is,Js);
-        };
-        return {I.size(), J.size(), submat};
-    }
-
-    MatFun<T> matfun2(vector<MultiIndex> const& I, vector<MultiIndex> const& J) const
-    {
-        auto submat=[this,I,J](vector<int> const& I0, vector<int> const& J0) {
-            vector<MultiIndex> Is(I0.size()), Js(J0.size());
-            for(auto i=0u; i<Is.size(); i++) Is[i]=I[I0[i]];
-            for(auto j=0u; j<Js.size(); j++) Js[j]=J[J0[j]];
-            return eval2(Is,Js);
         };
         return {I.size(), J.size(), submat};
     }
