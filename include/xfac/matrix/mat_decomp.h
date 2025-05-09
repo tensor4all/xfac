@@ -148,6 +148,42 @@ struct RRLUDecomp {
         readLU(A);
     }
 
+    void calculateFast(arma::Mat<T> A, double reltol, int rankMax)
+    {
+        npivot= std::min(A.n_rows, A.n_cols);
+        if (reltol==0) reltol=npivot*std::abs(std::numeric_limits<T>::epsilon());
+        if (rankMax>0 && rankMax<npivot) npivot=rankMax;
+
+        arma::uvec J;
+        { // column pivots by rrQR
+            arma::Mat<T> Q,R;
+            arma::qr(Q, R, J, A, "vector");
+            arma::vec sv=R.diag();
+            npivot=arma::find(sv>reltol*sv[0]).eval().size();
+            J=J.head_cols(npivot);
+        }
+        arma::uvec I(npivot);
+        { // row permutation by LU
+            arma::Mat<T> P; // P*A==L*U
+            lu(L, U, P, A.cols(J));
+            for(auto i=0u; i<npivot; i++)
+                I[i]=arma::find(P.row(i),1).at(0);
+        }
+
+        // compute the error
+        if (npivot<std::min(A.n_rows, A.n_cols)) {
+            auto R=A.rows(I)-L*U;
+            error=arma::abs( R.submat(npivot,npivot, R.n_rows-1, R.n_cols-1) ).max();
+        }
+        if (!leftOrthogonal) {
+            arma::Col<T> D=L.diag().eval();
+            L *= arma::diagmat(arma::inv(D));
+            U *= arma::diagmat(D);
+        }
+        Iset=arma::conv_to<vector<int>>::from(I);
+        Jset=arma::conv_to<vector<int>>::from(J);
+    }
+
     vector<int> row_pivots() const { return {Iset.begin(), Iset.begin()+npivot}; }
     vector<int> col_pivots() const { return {Jset.begin(), Jset.begin()+npivot}; }
     arma::Mat<T> PivotMatrixTri() const
