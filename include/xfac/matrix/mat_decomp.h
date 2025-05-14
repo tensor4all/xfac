@@ -2,7 +2,6 @@
 #define MAT_DECOMP_H
 
 #include "xfac/index_set.h"
-#include<memory>
 #define ARMA_DONT_USE_OPENMP
 #include<armadillo>
 
@@ -96,6 +95,37 @@ struct MatSVDFixedTol: public MatDecompFixedTol<SVDDecomp<T>> {
 
 //--------------------------------------- rank-revealing LU decomposition -----------------------
 
+
+/// Given the pivot matrix P already in LU form, update the C columns according to P.
+template<class T>
+void apply_LU_on_cols(arma::Mat<T>& C, arma::Mat<T> const& P, bool leftOrthogonal)
+{
+    if (P.n_rows != C.n_rows)
+        throw std::invalid_argument("apply_LU_on_Cols: incompatible matrices");
+    for(auto k=0u; k<P.n_rows; k++) {
+        auto rows=arma::span(k+1,C.n_rows-1);
+        if (!leftOrthogonal)
+            C.row(k) *= 1.0/P(k,k);
+        if (k+1<P.n_rows)
+            C.rows(rows) -= P(rows,k)*C.row(k) ;
+    }
+}
+
+/// Given the pivot matrix P already in LU form, update the R rows according to P.
+template<class T>
+void apply_LU_on_rows(arma::Mat<T>& R, arma::Mat<T> const& P, bool leftOrthogonal)
+{
+    if (P.n_cols != R.n_cols)
+        throw std::invalid_argument("apply_LU_on_Rows: incompatible matrices");
+    for(auto k=0u; k<P.n_rows; k++) {
+        auto cols=arma::span(k+1,R.n_cols-1);
+        if (leftOrthogonal)
+            R.col(k) *= 1.0/P(k,k);
+        if (k+1<P.n_rows)
+            R.cols(cols) -= R.col(k)*P(k,cols) ;
+    }
+}
+
 template<class T>
 struct RRLUDecomp {
     using value_type=T;
@@ -154,32 +184,37 @@ struct RRLUDecomp {
         if (reltol==0) reltol=npivot*std::abs(std::numeric_limits<T>::epsilon());
         if (rankMax>0 && rankMax<npivot) npivot=rankMax;
 
-        arma::uvec J;
-        { // column pivots by rrQR
+        arma::uvec J; // find column pivots by rrQR
+        {
             arma::Mat<T> Q,R;
             arma::qr(Q, R, J, A, "vector");
-            arma::vec sv=R.diag();
-            npivot=arma::find(sv>reltol*sv[0]).eval().size();
-            J=J.head_cols(npivot);
-        }
-        arma::uvec I(npivot);
-        { // row permutation by LU
-            arma::Mat<T> P; // P*A==L*U
-            lu(L, U, P, A.cols(J));
-            for(auto i=0u; i<npivot; i++)
-                I[i]=arma::find(P.row(i),1).at(0);
+            arma::vec sv=arma::abs(R.diag());
+            int rank=arma::find(sv>reltol*sv[0]).eval().size();
+            if (rank<npivot) npivot=rank;
+            if (npivot<std::min(A.n_rows, A.n_cols)) error=std::abs(sv.at(npivot));
         }
 
-        // compute the error
-        if (npivot<std::min(A.n_rows, A.n_cols)) {
-            auto R=A.rows(I)-L*U;
-            error=arma::abs( R.submat(npivot,npivot, R.n_rows-1, R.n_cols-1) ).max();
+        arma::uvec I(A.n_rows); // find row pivots by P*A(:,J)==L*U
+        {
+            arma::Mat<T> P;
+            lu(L, U, P, A.cols(J.head_rows(npivot)));
+            for(auto i=0u; i<P.n_rows; i++)
+                I[i]=arma::find(P.row(i),1).eval().at(0);
         }
+
+        arma::Col<T> D=U.diag().eval();
         if (!leftOrthogonal) {
-            arma::Col<T> D=L.diag().eval();
-            L *= arma::diagmat(arma::inv(D));
-            U *= arma::diagmat(D);
+            L = L*arma::diagmat(D);
+            U = arma::diagmat(1.0/D)*U;
         }
+        if (npivot<A.n_cols){ // compute the second part of U
+            auto U2=A.submat(I.head_rows(npivot),J.tail_rows(J.size()-npivot)).eval();
+            arma::Mat<T> P=L.head_rows(npivot)+U; // pivot matrix in LU form
+            P.diag()=D;
+            apply_LU_on_cols(U2,P,leftOrthogonal);
+            U=arma::join_horiz(U,U2).eval();
+        }
+
         Iset=arma::conv_to<vector<int>>::from(I);
         Jset=arma::conv_to<vector<int>>::from(J);
     }
@@ -227,35 +262,6 @@ protected:
     }
 };
 
-/// Given the pivot matrix P already in LU form, update the C columns according to P.
-template<class T>
-void apply_LU_on_cols(arma::Mat<T>& C, arma::Mat<T> const& P, bool leftOrthogonal)
-{
-    if (P.n_rows != C.n_rows)
-        throw std::invalid_argument("apply_LU_on_Cols: incompatible matrices");
-    for(auto k=0u; k<P.n_rows; k++) {
-        auto rows=arma::span(k+1,C.n_rows-1);
-        if (!leftOrthogonal)
-            C.row(k) *= 1.0/P(k,k);
-        if (k+1<P.n_rows)
-            C.rows(rows) -= P(rows,k)*C.row(k) ;
-    }
-}
-
-/// Given the pivot matrix P already in LU form, update the R rows according to P.
-template<class T>
-void apply_LU_on_rows(arma::Mat<T>& R, arma::Mat<T> const& P, bool leftOrthogonal)
-{
-    if (P.n_cols != R.n_cols)
-        throw std::invalid_argument("apply_LU_on_Rows: incompatible matrices");
-    for(auto k=0u; k<P.n_rows; k++) {
-        auto cols=arma::span(k+1,R.n_cols-1);
-        if (leftOrthogonal)
-            R.col(k) *= 1.0/P(k,k);
-        if (k+1<P.n_rows)
-            R.cols(cols) -= R.col(k)*P(k,cols) ;
-    }
-}
 
 template<class T>
 struct MatRRLUFixedTol: public MatDecompFixedTol<RRLUDecomp<T>> {
@@ -294,7 +300,7 @@ struct ARRLUDecomp: public RRLUDecomp<T> {
         RRLUDecomp<T>::Iset=iota(fA.n_rows);
         RRLUDecomp<T>::Jset=iota(fA.n_cols);
 
-        if (param.fullPiv) { this->calculate(fA.submat(Iset,Jset), param.reltol, param.bondDim); return; }
+        if (param.fullPiv) { this->calculateFast(fA.submat(Iset,Jset), param.reltol, param.bondDim); return; }
 
         int rankMax=std::min(fA.n_rows,fA.n_cols);
         if (param.bondDim>0 && param.bondDim<rankMax) rankMax=param.bondDim;
