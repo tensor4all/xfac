@@ -138,11 +138,11 @@ struct RRLUDecomp {
 
     RRLUDecomp()=default;
 
-    RRLUDecomp(arma::Mat<T> const& A, bool leftOrthogonal_=true, double reltol=0, int rankMax=0)
+    RRLUDecomp(arma::Mat<T> const& A, bool leftOrthogonal_=true, double reltol=0, int rankMax=0, bool fast=false)
         : leftOrthogonal(leftOrthogonal_)
         , Iset (iota(A.n_rows))
         , Jset (iota(A.n_cols))
-    { calculate(A, reltol, rankMax); }
+    { if (fast) calculateFast(A,reltol,rankMax); else calculate(A, reltol, rankMax); }
 
     void calculate(arma::Mat<T> A, double reltol, int rankMax)
     {
@@ -286,7 +286,7 @@ struct ARRLUParam {
 };
 
 template<class T>
-struct ARRLUDecomp: public RRLUDecomp<T> {
+struct ARRLUDecomp: public RRLUDecomp<T> { //TODO: try to use the fast rrlu
     using RRLUDecomp<T>::Iset;
     using RRLUDecomp<T>::Jset;
     using RRLUDecomp<T>::npivot;
@@ -362,8 +362,8 @@ struct CURDecomp: public ARRLUDecomp<T> {
 
     const arma::Mat<T> C, R;
 
-    CURDecomp(arma::Mat<T> const& A_, bool leftOrthogonal_=true, double reltol=1e-14, int rankMax=0)
-        : ARRLUDecomp<T>(A_,leftOrthogonal_,reltol,rankMax)
+    CURDecomp(arma::Mat<T> const& A_, bool leftOrthogonal_=true, double reltol=1e-14, int rankMax=0, bool fast=false)
+        : ARRLUDecomp<T>(A_,leftOrthogonal_,reltol,rankMax,fast)
         , C(A_.cols(arma::conv_to<arma::uvec>::from(col_pivots())))
         , R(A_.rows(arma::conv_to<arma::uvec>::from(row_pivots())))
     {}
