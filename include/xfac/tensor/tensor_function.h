@@ -12,8 +12,6 @@ namespace xfac {
 using std::vector;
 using std::function;
 
-
-
 ///< To store the tensor function f:(a1,a2,...,an)->T
 template<class T>
 struct TensorFunction {
@@ -21,6 +19,7 @@ struct TensorFunction {
     bool useCache=false;
     bool concatenate = true;  // use concatenation of the function argument (tensor train) or not (tensor tree)
 
+    TensorFunction() = default;
     TensorFunction(function<T(vector<int>)> f_, bool useCache_=false, bool concatenate_=true) : f(f_), useCache(useCache_), concatenate(concatenate_) {}
 
     T operator()(MultiIndex const& id) const { cEval+=1; return f({id.begin(),id.end()}); }

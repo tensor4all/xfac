@@ -138,6 +138,34 @@ TEST_CASE("rrlu")
                 REQUIRE(arma::norm(A.t()-sol.left()*sol.right())<tol);
             }
         }
+
+        // same as before, but now with a condition matrix (basically a boolean mask)
+        // pivots should be selected only where the corresponding elements in the condition matrix are true
+        arma::Mat<unsigned int> cond={{0,1,1},{1,1,0}};
+
+        SECTION("horizontal matrix cond") {
+            for(auto isLeft:{0, 1}) {
+                RRLUDecomp<double> sol(A,cond,isLeft,tol);
+                REQUIRE(arma::norm(A-sol.left()*sol.right())<tol);
+                for (auto i=0; i<sol.row_pivots().size(); i++){
+                    auto row = sol.row_pivots().at(i);
+                    auto col = sol.col_pivots().at(i);
+                    REQUIRE(cond(row, col) == 1);
+                }
+            }
+        }
+
+        SECTION("vertical matrix cond") {
+            for(auto isLeft:{0,1}) {
+                RRLUDecomp<double> sol(A.t(),cond.t(),isLeft,tol);
+                REQUIRE(arma::norm(A.t()-sol.left()*sol.right())<tol);
+                for (auto i=0; i<sol.row_pivots().size(); i++){
+                    auto row = sol.row_pivots().at(i);
+                    auto col = sol.col_pivots().at(i);
+                    REQUIRE(cond(col, row) == 1);
+                }
+            }
+        }
     }
 
     SECTION("from MPO") {
