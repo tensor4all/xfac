@@ -2,7 +2,6 @@
 
 #include<iostream>
 #include "xfac/tree/tree.h"
-#include "xfac/grid.h"
 
 /// Overload outstream to write vectors of numbers to the console
 
