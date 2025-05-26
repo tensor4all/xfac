@@ -43,6 +43,56 @@ struct TensorTree {
     /// compute the sum of the tensor tree
     T sum() const;
 
+    /// compute the overlap with another tensor tree <this|tt>
+    T overlap(const TensorTree<T>& tt) const
+    {
+        if (M.empty() || tt.M.empty()) return 0;
+        if (tree != tt.tree) throw std::invalid_argument("tt1.overlap(tt2) with different tree");
+        auto prod = vector<arma::Mat<T>> (M.size());
+        for(auto p:tree.leaves()) // initialize the leaves: L(A,B) = tt.M(A,a,s) * M(B,a,s)
+            prod[p]=cube_as_matrix1(tt.M[p]) * cube_as_matrix1(M[p]).t();
+
+        auto tensor_rank= vector<int>(M.size(), 6); // the number of legs is formally 6 after excluding the leaves
+        for(auto [from,to]:tree.leavesToRoot()) {
+            if (tree.nodes.contains(to)) { // physical node: like mps
+                int pos=tree.neigh.at(to).pos(from);
+                auto Mc=cube_swap_indices(M[to],1,pos);
+                auto Nc=cube_swap_indices(tt.M[to],1,pos);
+                // L(A,B)=L(a,b)*Nc(A,a,s)*Mc(B,b,s)
+                arma::Cube<T> LN=mat_cube(prod[from].st().eval(),Nc,1);
+                prod[to]=cube_as_matrix1(LN) * cube_as_matrix1(Mc).t();
+                tensor_rank[to]=2;
+            }
+            else if (tensor_rank[to]==6){ // virtual node: 1st visit
+                // L(A,s,B,S)=L(a,b)*N(A,a,s)*M(B,b,S)
+                int pos=tree.neigh.at(to).pos(from);
+                arma::Cube<T> LN=mat_cube(prod[from].st().eval(),tt.M[to], pos);  //LN(A,b,s)
+                prod[to]=cube_cube(LN,arma::conj(M[to]),pos);
+                tensor_rank[to]=4;
+            }
+            else if (tensor_rank[to]==4){ // vitual node: 2nd visit
+                // L(s,S)=Lf(a,b)*Lt(a,s,b,S)
+                auto nS=prod[to].n_cols/prod[from].n_cols;
+                auto ns=prod[to].n_rows/prod[from].n_rows;
+                arma::Cube<T> Lt(prod[to].memptr(), prod[to].n_rows, prod[from].n_cols, nS); // Lt(as,b,S)
+                cube_swap_indices(Lt,0,1); // Lt(b,as,S)
+                arma::Mat<T> Ltm(Lt.memptr(), Lt.n_rows*prod[from].n_rows, ns*nS); // Lt(ba,sS)
+                arma::Mat<T> Lf=arma::reshape(prod[from].st(),1,prod[from].size());
+                prod[to]=arma::reshape(Lf*Ltm, ns,nS);
+                tensor_rank[to]=2;
+            }
+            else if (tensor_rank[to]==2) { // virtual node: root
+                // L=L(a,b)*L(a,b)
+                T value=arma::dot(prod[from].t(),prod[to]);
+                prod[to]=arma::Mat<T>(1,1, arma::fill::value(value));
+                tensor_rank[to]=0;
+            }
+        }
+        return prod[tree.root](0,0);
+    }
+
+    T norm2() const { return overlap(*this); }
+
 };
 
 /// A class to sum over the tensor tree.
