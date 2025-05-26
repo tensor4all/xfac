@@ -45,7 +45,7 @@ TEST_CASE( "Test tensor tree" )
         int dim=1;
         grid::Quantics grid(0., 1., nBit, dim);
 
-        function func=[&](vector<double> const& x) {return cos(x[0]);};
+        function func=[&](vector<double> const& x) {return cos(M_PI*x[0]);};
         function tfunc = [&](vector<int> xi){ return func(grid.id_to_coord(xi));};
 
         auto tree = makeTuckerTree(dim, nBit);
@@ -58,7 +58,30 @@ TEST_CASE( "Test tensor tree" )
 
         // test integration over hypercube
         auto integ = ci.tt.sum() * grid.deltaVolume;
-        REQUIRE ( abs(integ - sin(1)) <= 1e-5 );
+        REQUIRE ( std::abs(integ - 0.0) <= 1e-5 );
+
+        SECTION( "norm")
+        {
+            REQUIRE(std::abs(ci.tt.norm2()*grid.deltaVolume-0.5)<1e-4);
+        }
+        SECTION("overlap")
+        {
+            function func2=[&](vector<double> const& x) {return 0.5*cos(2*M_PI*x[0])+sin(M_PI*x[0]);};
+            function tfunc2 = [&](vector<int> xi){ return func2(grid.id_to_coord(xi));};
+
+            auto ci2=TensorTreeCI<double>(tfunc2, tree, grid.tensorDims(), {.pivot1=vector(grid.tensorLen, 0)});
+            ci2.addPivotsAllBonds({vector(grid.tensorLen, 1)});
+            ci2.iterate(5);
+
+            // test function interpolation
+            vector<double> x = {0.2};
+            REQUIRE ( std::abs(ci2.tt.eval(grid.coord_to_id(x)) - func2(x)) <= 1e-5 );
+
+            // test integration over hypercube
+            auto integ = ci2.tt.sum() * grid.deltaVolume;
+            REQUIRE ( std::abs(integ - 2.0/M_PI) <= 1e-5 );
+            REQUIRE( std::abs(ci2.tt.overlap(ci.tt))*grid.deltaVolume < 1e-5);
+        }
     }
 
     SECTION( "random piv" )

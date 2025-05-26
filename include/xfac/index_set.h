@@ -88,6 +88,9 @@ public:
     }
 };
 
+template<class Index=int>
+bool operator==(IndexSet<Index> const& a, IndexSet<Index> const& b) { return a.from_int()==b.from_int(); }
+
 using MultiIndex=std::u32string ;
 template<class T>
 using MultiIndexG=std::vector<T> ;

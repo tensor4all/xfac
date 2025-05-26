@@ -50,6 +50,14 @@ public:
         return std::make_pair(s0p, s1p);
     }
 
+    vector<int> leaves() const
+    {
+        vector<int> out;
+        for(auto x:nodes) // only a physical nodes can be a leaf
+            if (neigh.at(x).size()==1) out.push_back(x);
+        return out;
+    }
+
     /// return pair of nodes {from,to} with ordering: root -> leaves
     std::vector<std::pair<int,int>> rootToLeaves() const {return rootToLeaves(root);};
     std::vector<std::pair<int,int>> rootToLeaves(int root) const
@@ -89,6 +97,15 @@ public:
         if (parent!=-1) path.push_back({nodeid,parent});
     }
 };
+
+inline bool operator==(TopologyTree const& t1, TopologyTree const& t2)
+{
+    return (
+        t1.neigh==t2.neigh &&
+        t1.nodes==t2.nodes &&
+        t1.root==t2.root
+        );
+}
 
 
 inline TopologyTree makeTuckerTree(int dim, int nBit){
