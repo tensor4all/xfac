@@ -80,7 +80,7 @@ TEST_CASE( "Test tensor tree" )
             // test integration over hypercube
             auto integ = ci2.tt.sum() * grid.deltaVolume;
             REQUIRE ( std::abs(integ - 2.0/M_PI) <= 1e-5 );
-
+            REQUIRE( std::abs(ci2.tt.overlap(ci.tt))*grid.deltaVolume < 1e-5);
         }
     }
 
