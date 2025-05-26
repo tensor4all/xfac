@@ -4,6 +4,7 @@
 #include "xfac/grid.h"
 #include "xfac/index_set.h"
 #include "xfac/matrix/mat_decomp.h"
+#include "xfac/cubemat_helper.h"
 
 #include<vector>
 #include<array>
@@ -15,15 +16,6 @@ namespace xfac {
 using std::vector;
 using std::function;
 using std::array;
-
-
-/// reshape a cube as a matrix B(i,jk)=A(i,j,k)
-template<class eT>
-arma::Mat<eT> cube_as_matrix1(arma::Cube<eT> const& A) { return arma::Mat<eT>(const_cast<eT*>(A.memptr()), A.n_rows, A.n_cols*A.n_slices, false); }
-
-/// reshape a cube as a matrix B(ij,k)=A(i,j,k)
-template<class eT>
-arma::Mat<eT> cube_as_matrix2(arma::Cube<eT> const& A) { return arma::Mat<eT>(const_cast<eT*>(A.memptr()), A.n_rows*A.n_cols, A.n_slices, false); }
 
 
 /// stores a tensor train, i.e., a list of cubes.
