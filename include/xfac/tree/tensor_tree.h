@@ -75,7 +75,7 @@ struct TensorTree {
                 auto nS=prod[to].n_cols/prod[from].n_cols;
                 auto ns=prod[to].n_rows/prod[from].n_rows;
                 arma::Cube<T> Lt(prod[to].memptr(), prod[to].n_rows, prod[from].n_cols, nS); // Lt(as,b,S)
-                cube_swap_indices(Lt,0,1); // Lt(b,as,S)
+                Lt=cube_swap_indices(Lt,0,1); // Lt(b,as,S)
                 arma::Mat<T> Ltm(Lt.memptr(), Lt.n_rows*prod[from].n_rows, ns*nS); // Lt(ba,sS)
                 arma::Mat<T> Lf=arma::reshape(prod[from].st(),1,prod[from].size());
                 prod[to]=arma::reshape(Lf*Ltm, ns,nS);
@@ -83,10 +83,11 @@ struct TensorTree {
             }
             else if (tensor_rank[to]==2) { // virtual node: root
                 // L=L(a,b)*L(a,b)
-                T value=arma::dot(prod[from].t(),prod[to]);
+                T value=arma::dot(prod[from],prod[to]);
                 prod[to]=arma::Mat<T>(1,1, arma::fill::value(value));
                 tensor_rank[to]=0;
             }
+            else throw std::runtime_error("tree::overlap unexpected tensor rank");
         }
         return prod[tree.root](0,0);
     }

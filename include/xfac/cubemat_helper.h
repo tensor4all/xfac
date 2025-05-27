@@ -294,7 +294,7 @@ arma::Cube<T> cube_swap_indices(arma::Cube<T> const& A, int from, int to)
 template<class T>
 arma::Mat<T> cube_cube(arma::Cube<T> const& A, arma::Cube<T> const& B, int pos)
 {
-    if (pos==0) return cube_as_matrix1(A).st()*cube_as_matrix2(B);
+    if (pos==0) return cube_as_matrix1(A).st()*cube_as_matrix1(B);
     else if (pos==2) return cube_as_matrix2(A)*cube_as_matrix2(B).st();
     else return cube_cube(cube_reorder(A,"jik"),cube_reorder(B,"jik"),0);
 }

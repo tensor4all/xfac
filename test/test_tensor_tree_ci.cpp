@@ -123,16 +123,18 @@ TEST_CASE( "Test tensor tree" )
         int dim=3;
         grid::Quantics grid(0., 1., nBit, dim);
 
-        function func=[&](vector<double> const& x) {return cos(4*x[0] + x[1] + 2*x[2]);};
+        function func=[&](vector<double> const& x) {return cos(4*x[0] + x[1] + 2*x[2])+sin(4*x[0] + x[1] + 2*x[2]);};
         function tfunc = [&](vector<int> xi){ return func(grid.id_to_coord(xi));};
 
         auto tree = makeTuckerTree(dim, nBit);
 
         auto ci=TensorTreeCI<double>(tfunc, tree, grid.tensorDims(), {.pivot1=vector(grid.tensorLen, 0)});
         ci.addPivotsAllBonds({vector(grid.tensorLen, 1)});
+        ci.iterate(5);
 
         vector<double> x = {0.3, 0.2, 0.7};
         REQUIRE ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
+        std::cout<<ci.tt.norm2()*grid.deltaVolume<<" "<<0.472715<<std::endl;
     }
 
     SECTION( "exp" )
