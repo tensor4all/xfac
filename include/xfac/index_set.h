@@ -86,6 +86,13 @@ public:
         to_int_data.emplace(i,from_int_data.size());
         from_int_data.push_back(i);
     }
+    void remove(Index i)
+    {
+        if (to_int_data.find(i) == to_int_data.end()) throw std::invalid_argument("IndexSet::remove non-existing index");
+        vector<Index> out;
+        for(auto x:from_int_data) if (x!=i) out.push_back(x);
+        *this=IndexSet(out);
+    }
 };
 
 template<class Index=int>
