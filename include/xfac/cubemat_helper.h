@@ -270,7 +270,8 @@ arma::Cube<T> cube_reorder(arma::Cube<T> const& A, std::string_view order)
         for(int i=0; i<a.size(); i++) b[idx[i]]=a[i];
         return b;
     };
-    auto B=std::make_from_tuple<arma::Cube<T>>( reorder(array<size_t,3> {A.n_rows,A.n_cols,A.n_slices}) );
+    auto B_shape=reorder({A.n_rows,A.n_cols,A.n_slices});
+    auto B=std::make_from_tuple<arma::Cube<T>>( B_shape );
 
     for(auto i=0u; i<A.n_rows; i++)
         for(auto j=0u; j<A.n_cols; j++)
@@ -290,13 +291,13 @@ arma::Cube<T> cube_swap_indices(arma::Cube<T> const& A, int from, int to)
     return cube_reorder(A,order);
 }
 
-/// contract the two cubes along the indices pos, something like L(A,s,B,S)=N(A,a,s)*M(B,a,S)
+/// contract the two cubes along the indices pos, something like L(As,BS)=N(A,a,s)*M(B,a,S)
 template<class T>
 arma::Mat<T> cube_cube(arma::Cube<T> const& A, arma::Cube<T> const& B, int pos)
 {
     if (pos==0) return cube_as_matrix1(A).st()*cube_as_matrix1(B);
     else if (pos==2) return cube_as_matrix2(A)*cube_as_matrix2(B).st();
-    else return cube_cube(cube_reorder(A,"jik"),cube_reorder(B,"jik"),0);
+    else return cube_cube(cube_swap_indices(A,0,1),cube_swap_indices(B,0,1),0);
 }
 
 }
