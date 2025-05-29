@@ -2,6 +2,7 @@
 
 #include<iostream>
 #include "xfac/grid.h"
+#include "xfac/tensor/tensor_ci_2.h"
 #include "xfac/tree/tensor_tree.h"
 #include "xfac/tree/tensor_tree_ci.h"
 
@@ -123,7 +124,7 @@ TEST_CASE( "Test tensor tree" )
         int dim=3;
         grid::Quantics grid(0., 1., nBit, dim);
 
-        function func=[&](vector<double> const& x) {return cos(4*x[0] + x[1] + 2*x[2])+sin(4*x[0] + x[1] + 2*x[2]);};
+        function func=[&](vector<double> const& x) {return cos(4*x[0] + x[1] + 2*x[2]);};
         function tfunc = [&](vector<int> xi){ return func(grid.id_to_coord(xi));};
 
         auto tree = makeTuckerTree(dim, nBit);
@@ -133,8 +134,9 @@ TEST_CASE( "Test tensor tree" )
         ci.iterate(5);
 
         vector<double> x = {0.3, 0.2, 0.7};
-        REQUIRE ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
-        std::cout<<ci.tt.norm2()*grid.deltaVolume<<" "<<0.472715<<std::endl;
+        REQUIRE ( std::abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
+        REQUIRE ( std::abs(ci.tt.sum()*grid.deltaVolume + 0.34352153498) <= 1e-5);
+        REQUIRE ( std::abs(ci.tt.norm2()*grid.deltaVolume-0.472715) <= 1e-5);
     }
 
     SECTION( "exp" )

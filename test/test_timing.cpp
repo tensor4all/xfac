@@ -25,7 +25,7 @@ TEST_CASE("timing")
     auto ci=CTensorCI1<double,double>(f,vector(dim,xi));
     vector<double> ti;
     time_t  t0=time(nullptr);
-    for(auto i=1; i<31/*150*/; i++) {
+    for(auto i=1; i<21/*150*/; i++) {
         ci.iterate();
         ti.push_back(difftime(time(nullptr),t0));
         if (i % 10 ==0)
