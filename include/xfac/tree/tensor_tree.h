@@ -104,18 +104,15 @@ struct TensorTree {
 
     void save(std::ostream &out) const
     {
-        out<<M.size()<<std::endl;
+        tree.save(out);
         for (const arma::Cube<T>& Mi:M) { Mi.save(out,arma::arma_ascii); out<<std::endl; }
     }
     void save(std::string fileName) const { std::ofstream out(fileName); save(out); }
 
-    static TensorTree<T> load(std::ifstream& in, TopologyTree const& tree)
+    static TensorTree<T> load(std::ifstream& in)
     {
-        int L;
-        in>>L;
-        if (tree.size()!=L) throw std::invalid_argument("TTree::load incompatible tree and lenght");
+        TopologyTree tree=TopologyTree::load(in);
         TensorTree<T> tt(tree);
-        tt.M.resize(L);
         for(arma::Cube<T>& Mi:tt.M)
             Mi.load(in,arma::arma_ascii);
         return tt;
