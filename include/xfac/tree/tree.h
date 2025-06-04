@@ -2,6 +2,7 @@
 #define TREE_H
 
 #include "xfac/index_set.h"
+#include <fstream>
 #include <vector>
 #include <map>
 #include <set>
@@ -80,7 +81,51 @@ public:
         return out;
     }
 
-  private:
+    void save(std::ostream &out) const
+    {
+        out<<root<<std::endl;
+        out<<nodes.size()<<std::endl;
+        for (const auto& n:nodes) out<<" "<<n;
+        out<<std::endl;
+        out<<neigh.size()<<std::endl;
+        for(auto [node,nSet]:neigh) {
+            out<<" "<<node<<" "<<nSet.size();
+            for(auto n2:nSet.from_int())
+                out<<" "<<n2;
+            out<<std::endl;
+        }
+    }
+    void save(std::string fileName) const { std::ofstream out(fileName); save(out); }
+
+    static TopologyTree load(std::ifstream& in)
+    {
+        TopologyTree tree;
+        in>>tree.root;
+        int L, L1, node, node1;
+        in>>L;
+        for(auto i=0;i<L;i++) {
+            in>>node;
+            tree.nodes.insert(node);
+        }
+        in>>L;
+        for(auto i=0;i<L;i++) {
+            in>>node>>L1;
+            for(auto j=0;j<L1;j++) {
+                in>>node1;
+                tree.neigh[node].push_back(node1);
+            }
+        }
+        return tree;
+    }
+
+    static TopologyTree load(std::string fileName)
+    {
+        std::ifstream in(fileName);
+        if (in.fail()) throw std::runtime_error("TensorTrain::load fails to load file: " + fileName);
+        return load(in);
+    }
+
+private:
 
     void walk_depth_first(std::vector<int>& path, int nodeid, int parent=-1) const
     {
