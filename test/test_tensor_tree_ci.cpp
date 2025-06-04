@@ -124,7 +124,7 @@ TEST_CASE( "Test tensor tree" )
         int dim=3;
         grid::Quantics grid(0., 1., nBit, dim);
 
-        function func=[&](vector<double> const& x) {return cos(4*x[0] + x[1] + 2*x[2]);};
+        function func=[&](vector<double> const& x) {return cos(4*x[0] + x[1] + 2*x[2])+sin(x[0] + 2*x[1] + 4*x[2]);};
         function tfunc = [&](vector<int> xi){ return func(grid.id_to_coord(xi));};
 
         auto tree = makeTuckerTree(dim, nBit);
@@ -135,8 +135,8 @@ TEST_CASE( "Test tensor tree" )
 
         vector<double> x = {0.3, 0.2, 0.7};
         REQUIRE ( std::abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
-        REQUIRE ( std::abs(ci.tt.sum()*grid.deltaVolume + 0.34352153498) <= 1e-5);
-        REQUIRE ( std::abs(ci.tt.norm2()*grid.deltaVolume-0.472715) <= 1e-5);
+        REQUIRE ( std::abs(ci.tt.sum()*grid.deltaVolume + 0.4722) <= 1e-5);
+        REQUIRE ( std::abs(ci.tt.norm2()*grid.deltaVolume-1.00492) <= 1e-5);
     }
 
     SECTION( "exp" )
