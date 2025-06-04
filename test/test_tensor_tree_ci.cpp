@@ -137,6 +137,15 @@ TEST_CASE( "Test tensor tree" )
         REQUIRE ( std::abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
         REQUIRE ( std::abs(ci.tt.sum()*grid.deltaVolume + 0.4722) <= 1e-5);
         REQUIRE ( std::abs(ci.tt.norm2()*grid.deltaVolume-1.00492) <= 1e-5);
+
+        SECTION( "save")
+        {
+            ci.tt.save("ttree.txt");
+            auto tt=TensorTree<double>::load("ttree.txt");
+            REQUIRE ( std::abs(tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
+            REQUIRE ( std::abs(tt.sum()*grid.deltaVolume + 0.4722) <= 1e-5);
+            REQUIRE ( std::abs(tt.norm2()*grid.deltaVolume-1.00492) <= 1e-5);
+        }
     }
 
     SECTION( "exp" )
