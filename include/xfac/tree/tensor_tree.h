@@ -102,6 +102,31 @@ struct TensorTree {
 
     T norm2() const { return overlap(*this); }
 
+    void save(std::ostream &out) const
+    {
+        out<<M.size()<<std::endl;
+        for (const arma::Cube<T>& Mi:M) { Mi.save(out,arma::arma_ascii); out<<std::endl; }
+    }
+    void save(std::string fileName) const { std::ofstream out(fileName); save(out); }
+
+    static TensorTree<T> load(std::ifstream& in, TopologyTree const& tree)
+    {
+        int L;
+        in>>L;
+        if (tree.size()!=L) throw std::invalid_argument("TTree::load incompatible tree and lenght");
+        TensorTree<T> tt(tree);
+        tt.M.resize(L);
+        for(arma::Cube<T>& Mi:tt.M)
+            Mi.load(in,arma::arma_ascii);
+        return tt;
+    }
+
+    static TensorTree<T> load(std::string fileName)
+    {
+        std::ifstream in(fileName);
+        if (in.fail()) throw std::runtime_error("TensorTrain::load fails to load file: " + fileName);
+        return load(in);
+    }
 };
 
 /// A class to sum over the tensor tree.
