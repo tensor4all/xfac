@@ -2,7 +2,6 @@
 
 #include<iostream>
 #include "xfac/grid.h"
-#include "xfac/tensor/tensor_ci_2.h"
 #include "xfac/tree/tensor_tree.h"
 #include "xfac/tree/tensor_tree_ci.h"
 
@@ -164,4 +163,67 @@ TEST_CASE( "Test tensor tree" )
         REQUIRE ( abs(ci.tt.eval(grid.coord_to_id(x)) - func(x)) <= 1e-5 );
     }
 
+    SECTION( "compression" )
+    {
+        int nBit = 25;
+        int dim = 5;
+        grid::Quantics grid(0., 1., nBit, dim);
+
+        auto f=[](const vector<double>& xs) {
+            double x=0, y=0,c=0;
+            for(auto xi:xs) {c++; x+=c*xi; y+=xi*xi/c;}
+            double arg=1.0+(x+2.11*y+x*y)*M_PI;
+            return cmpx(1+x+cos(arg),x*x+0.5*sin(arg));
+        };
+        function tfunc = [&](vector<int> xi){ return f(grid.id_to_coord(xi));};
+
+        auto tree = makeTuckerTree(dim, nBit);
+
+        auto ci=TensorTreeCI<cmpx>(tfunc, tree, grid.tensorDims(), {.bondDim=120});
+        ci.iterate(3);
+
+        vector<double> x = {0.12923440720030277, 0.297077424311301408, 0.0254460438286207569,
+                            0.297077424311301408, 0.0254460438286207569};  // values taken similar as in compression test for TensorCI2
+
+        // test function interpolation
+        REQUIRE ( abs(ci.tt.eval(grid.coord_to_id(x)) - f(x)) < 1e-5 );
+
+        // test integration over hypercube
+        auto integ = ci.tt.sum() * grid.deltaVolume;
+        auto integ_ref = cmpx(8.4999,60.8335);  // ref result from TensorCI2
+        REQUIRE ( abs(integ - integ_ref) < 1e-3 );
+
+        //for (auto const & m : ci.tt.M) std::cout << "ranks= " <<  m.n_rows << "  " << m.n_cols << " " << m.n_slices << "\n";
+        //std::cout <<std::setprecision(12)<< "uncompressed: f= " << ci.tt.eval(grid.coord_to_id(x)) << " int= " << integ << "\n";
+
+        SECTION("SVD") {
+            auto mps=ci.tt;
+            mps.compressSVD();
+            integ = mps.sum() * grid.deltaVolume;
+            REQUIRE( abs(mps.eval(grid.coord_to_id(x))-f(x)) < 1e-5 );
+            REQUIRE( abs(integ - integ_ref) < 1e-3 );
+            //for (auto const & m : mps.M) std::cout << "SVD ranks= " <<  m.n_rows << "  " << m.n_cols << " " << m.n_slices << "\n";
+            //std::cout <<std::setprecision(12)<< "SVD: f= " << mps.eval(grid.coord_to_id(x)) << " int= " << integ << "\n";
+        }
+
+        SECTION("LU") {
+            auto mps=ci.tt;
+            mps.compressLU();
+            integ = mps.sum() * grid.deltaVolume;
+            REQUIRE( abs(mps.eval(grid.coord_to_id(x))-f(x)) < 1e-5 );
+            REQUIRE( abs(integ - integ_ref) < 1e-3 );
+            //for (auto const & m : mps.M) std::cout << "LU ranks= " <<  m.n_rows << "  " << m.n_cols << " " << m.n_slices << "\n";
+            //std::cout <<std::setprecision(12)<< "LU: f= " << mps.eval(grid.coord_to_id(x)) << " int= " << integ << "\n";
+        }
+
+        SECTION("CI") {
+            auto mps=ci.tt;
+            mps.compressCI();
+            integ = mps.sum() * grid.deltaVolume;
+            REQUIRE( abs(mps.eval(grid.coord_to_id(x))-f(x)) < 1e-5 );
+            REQUIRE( abs(integ - integ_ref) < 1e-3 );
+            //for (auto const & m : mps.M) std::cout << "CI ranks= " <<  m.n_rows << "  " << m.n_cols << " " << m.n_slices << "\n";
+            //std::cout <<std::setprecision(12)<< "CI: f= " << mps.eval(grid.coord_to_id(x)) << " int= " << integ << "\n";
+        }
+    }
 }

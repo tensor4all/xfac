@@ -103,11 +103,11 @@ struct TensorTreeCI {
     arma::Cube<T> get_TP1(int from, int to) const
     {
         auto M = get_T3(from);
-        arma::Mat<T> t3mat = cubeToMat(M, tree.neigh.at(from).pos(to));
-        auto pos = cubeToMatPos(M, tree.neigh.at(from).pos(to));
+        arma::Mat<T> t3mat = cubeToMat_R(M, tree.neigh.at(from).pos(to));
         arma::Mat<T> TP1 = compute_CU_on_rows(t3mat, P.at({from, to}));
-        auto tp1_tmp = arma::Cube<T>(TP1.memptr(), pos[0], pos[1], pos[2], true);
-        return reshape_cube2(tp1_tmp, tree.neigh.at(from).pos(to));
+        vector<long unsigned int> shape_f{M.n_rows, M.n_cols, M.n_slices};
+        shape_f[tree.neigh.at(from).pos(to)] = P.at({from, to}).n_cols;
+        return matToCube_R<T>(TP1, shape_f, tree.neigh.at(from).pos(to));
     }
 
     /// returns the number of physical legs of the tensor tree

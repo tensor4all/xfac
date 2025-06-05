@@ -10,78 +10,55 @@ using cmpx=std::complex<double>;
 
 TEST_CASE( "Test cubemat helper" )
 {
-    SECTION( "reshape_cube2" )
+
+    SECTION( "cube_reorder" )
     {
         double abstol = 1e-12;
-        arma::Cube<double> A(2, 3, 4, arma::fill::randu);
+        arma::Cube<double> M(2, 3, 4, arma::fill::randu);
 
-        {  // reshape 0.th element A(i,j,l) -> A(l,i,j)
-            auto B = reshape_cube2(A, 0);
-            for (auto i=0u; i<A.n_rows; i++){
-                for (auto j=0u; j<A.n_cols; j++){
-                    for (auto l=0u; l<A.n_slices; l++){
-                        //std::cout << "ijl= " << i << " " << j << " " << l << " "<< A(i, j, l) << " "<<  B(l, i, j)<<"\n";
-                        REQUIRE(abs(A(i, j, l) - B(l, i, j)) <= abstol);
-                    }
-                }
-            }
-        }
+        auto A = cube_reorder(M, "ijk");
+        auto B = cube_reorder(M, "jik");
+        auto C = cube_reorder(M, "kji");
+        auto D = cube_reorder(M, "jki");
+        auto E = cube_reorder(M, "kij");
+        auto F = cube_reorder(M, "ikj");
 
-        {  // reshape 1.th element A(i,j,l) -> A(i,l,j)
-            auto B = reshape_cube2(A, 1);
-            for (auto i=0u; i<A.n_rows; i++){
-                for (auto j=0u; j<A.n_cols; j++){
-                    for (auto l=0u; l<A.n_slices; l++){
-                        REQUIRE(abs(A(i, j, l) - B(i, l, j)) <= abstol);
-                    }
-                }
-            }
-        }
-        {  // reshape 2.th element A(i,j,l) -> A(i,j,l)
-            auto B = reshape_cube2(A, 2);
-            for (auto i=0u; i<A.n_rows; i++){
-                for (auto j=0u; j<A.n_cols; j++){
-                    for (auto l=0u; l<A.n_slices; l++){
-                        REQUIRE(abs(A(i, j, l) - B(i, j, l)) <= abstol);
-                    }
+        for (auto i=0u; i<A.n_rows; i++){
+            for (auto j=0u; j<A.n_cols; j++){
+                for (auto k=0u; k<A.n_slices; k++){
+                    REQUIRE(abs(M(i, j, k) - A(i, j, k)) <= abstol);
+                    REQUIRE(abs(M(i, j, k) - B(j, i, k)) <= abstol);
+                    REQUIRE(abs(M(i, j, k) - C(k, j, i)) <= abstol);
+                    REQUIRE(abs(M(i, j, k) - D(j, k, i)) <= abstol);
+                    REQUIRE(abs(M(i, j, k) - E(k, i, j)) <= abstol);
+                    REQUIRE(abs(M(i, j, k) - F(i, k, j)) <= abstol);
+
                 }
             }
         }
     }
 
-    SECTION( "reshape_cube" )
+
+    SECTION( "cube mat cube" )
     {
+        // cubeToMat reshapes a cube to matrix and matToCube reshapes the matrix back to a cube,
+        // which should be indentical to the initial cube
         double abstol = 1e-12;
-        arma::Cube<double> A(2, 3, 4, arma::fill::randu);
+        arma::Cube<double> M(2, 3, 4, arma::fill::randu);
 
-        {  // reshape 0.th element A(i,j,l) -> A(l,j,i)
-            auto B = reshape_cube(A, 0);
-            for (auto i=0u; i<A.n_rows; i++){
-                for (auto j=0u; j<A.n_cols; j++){
-                    for (auto l=0u; l<A.n_slices; l++){
-                        //std::cout << "ijl= " << i << " " << j << " " << l << " "<< A(i, j, l) << " "<<  B(l,j,i)<<"\n";
-                        REQUIRE(abs(A(i, j, l) - B(l, j, i)) <= abstol);
-                    }
-                }
-            }
-        }
+        for (auto cube_pos : {0, 1, 2}){
 
-        {  // reshape 1.th element A(i,j,l) -> A(i,l,j)
-            auto B = reshape_cube(A, 1);
+            arma::Mat<double> amat = cubeToMat_R(M, cube_pos);
+            auto A = matToCube_R(amat, {M.n_rows, M.n_cols, M.n_slices}, cube_pos);
+
+            arma::Mat<double> bmat = cubeToMat_L(M, cube_pos);
+            auto B = matToCube_L(bmat, {M.n_rows, M.n_cols, M.n_slices}, cube_pos);
+
             for (auto i=0u; i<A.n_rows; i++){
                 for (auto j=0u; j<A.n_cols; j++){
                     for (auto l=0u; l<A.n_slices; l++){
-                        REQUIRE(abs(A(i, j, l) - B(i, l, j)) <= abstol);
-                    }
-                }
-            }
-        }
-        {  // reshape 2.th element A(i,j,l) -> A(i,j,l)
-            auto B = reshape_cube(A, 2);
-            for (auto i=0u; i<A.n_rows; i++){
-                for (auto j=0u; j<A.n_cols; j++){
-                    for (auto l=0u; l<A.n_slices; l++){
-                        REQUIRE(abs(A(i, j, l) - B(i, j, l)) <= abstol);
+                        REQUIRE(abs(M(i, j, l) - A(i, j, l)) <= abstol);
+                        REQUIRE(abs(M(i, j, l) - B(i, j, l)) <= abstol);
                     }
                 }
             }
@@ -89,13 +66,15 @@ TEST_CASE( "Test cubemat helper" )
     }
 
 
-    SECTION( "cubeToMat" )
+    SECTION( "cubeToMat_R" )
     {
         double abstol = 1e-12;
         arma::Cube<double> A(2, 3, 4, arma::fill::randu);
+
+        // the packed index is in column-major order
 
         {  // reshape 0.th element, cube as a matrix B(jl,i)=A(i,j,l)
-            arma::Mat<double> B = cubeToMat(A, 0);
+            arma::Mat<double> B = cubeToMat_R(A, 0);
             for (auto i=0u; i<A.n_rows; i++){
                 for (auto j=0u; j<A.n_cols; j++){
                     for (auto l=0u; l<A.n_slices; l++){
@@ -106,7 +85,7 @@ TEST_CASE( "Test cubemat helper" )
             }
         }
         {  // reshape 1.th element, cube as a matrix B(il,j)=A(i,j,l)
-            arma::Mat<double> B = cubeToMat(A, 1);
+            arma::Mat<double> B = cubeToMat_R(A, 1);
             for (auto i=0u; i<A.n_rows; i++){
                 for (auto j=0u; j<A.n_cols; j++){
                     for (auto l=0u; l<A.n_slices; l++){
@@ -117,12 +96,55 @@ TEST_CASE( "Test cubemat helper" )
             }
         }
         {  // reshape 2.th element, cube as a matrix B(ij,l)=A(i,j,l)
-            arma::Mat<double> B = cubeToMat(A, 2);
+            arma::Mat<double> B = cubeToMat_R(A, 2);
             for (auto i=0u; i<A.n_rows; i++){
                 for (auto j=0u; j<A.n_cols; j++){
                     for (auto l=0u; l<A.n_slices; l++){
                         auto ij = i + j * A.n_rows;
                         REQUIRE(abs(A(i, j, l) - B(ij, l)) <= abstol);
+                    }
+                }
+            }
+        }
+    }
+
+
+    SECTION( "cubeToMat_L" )
+    {
+        double abstol = 1e-12;
+        arma::Cube<double> A(2, 3, 4, arma::fill::randu);
+
+        // the packed index is in column-major order
+
+        {  // reshape 0.th element, cube as a matrix B(i,jl)=A(i,j,l)
+            arma::Mat<double> B = cubeToMat_L(A, 0);
+            for (auto i=0u; i<A.n_rows; i++){
+                for (auto j=0u; j<A.n_cols; j++){
+                    for (auto l=0u; l<A.n_slices; l++){
+                        auto jl = j + l * A.n_cols;
+                        REQUIRE(abs(A(i, j, l) - B(i, jl)) <= abstol);
+                    }
+                }
+            }
+        }
+        {  // reshape 1.th element, cube as a matrix B(j,il)=A(i,j,l)
+            arma::Mat<double> B = cubeToMat_L(A, 1);
+            for (auto i=0u; i<A.n_rows; i++){
+                for (auto j=0u; j<A.n_cols; j++){
+                    for (auto l=0u; l<A.n_slices; l++){
+                        auto il = i + l * A.n_rows;
+                        REQUIRE(abs(A(i, j, l) - B(j, il)) <= abstol);
+                    }
+                }
+            }
+        }
+        {  // reshape 2.th element, cube as a matrix B(l,ij)=A(i,j,l)
+            arma::Mat<double> B = cubeToMat_L(A, 2);
+            for (auto i=0u; i<A.n_rows; i++){
+                for (auto j=0u; j<A.n_cols; j++){
+                    for (auto l=0u; l<A.n_slices; l++){
+                        auto ij = i + j * A.n_rows;
+                        REQUIRE(abs(A(i, j, l) - B(l, ij)) <= abstol);
                     }
                 }
             }

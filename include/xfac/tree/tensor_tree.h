@@ -4,14 +4,18 @@
 
 #include"xfac/tree/tree.h"
 #include"xfac/cubemat_helper.h"
+#include "xfac/matrix/mat_decomp.h"
 
 #include<vector>
+#include<array>
 #define ARMA_DONT_USE_OPENMP
 #include<armadillo>
 
 namespace xfac {
 
 using std::vector;
+using std::function;
+using std::array;
 
 /// A class to store a tensor tree and to evaluate it.
 template<class T>
@@ -102,6 +106,31 @@ struct TensorTree {
 
     T norm2() const { return overlap(*this); }
 
+    /// compress the bond between site *from* and site *to*
+    void compress_bond(int from, int to, function<array<arma::Mat<T>,2>(arma::Mat<T>,bool)> mat_decomp)
+    {
+        auto ab = mat_decomp(cubeToMat_R(M.at(from), tree.neigh.at(from).pos(to)), true);
+        arma::Mat<T> &M1=ab[0];
+        arma::Mat<T> M2= ab[1] * cubeToMat_L(M.at(to), tree.neigh.at(to).pos(from));
+
+        vector<unsigned long int> shape_f{M.at(from).n_rows, M.at(from).n_cols, M.at(from).n_slices};
+        shape_f.at(tree.neigh.at(from).pos(to)) = M1.n_cols;
+        M.at(from) = matToCube_R(M1, shape_f, tree.neigh.at(from).pos(to));
+
+        vector<unsigned long int> shape_t{M.at(to).n_rows, M.at(to).n_cols, M.at(to).n_slices};
+        shape_t.at(tree.neigh.at(to).pos(from)) = M2.n_rows;
+        M.at(to) = matToCube_L(M2, shape_t, tree.neigh.at(to).pos(from));
+    }
+
+    /// compress along the full tree
+    void compress_tree(function<array<arma::Mat<T>,2>(arma::Mat<T>,bool)> mat_decomp){
+        for(auto [from, to]:tree.rootToLeaves()) compress_bond(from, to, mat_decomp);
+    }
+
+    void compressSVD(double reltol=1e-12, int maxBondDim=0) { compress_tree(MatQR<T> {}); compress_tree(MatSVDFixedTol<T> {reltol,maxBondDim}); }
+    void compressLU(double reltol=1e-12, int maxBondDim=0)  { compress_tree(MatRRLUFixedTol<T> {}); compress_tree(MatRRLUFixedTol<T> {reltol, maxBondDim}); }
+    void compressCI(double reltol=1e-12, int maxBondDim=0)  { compress_tree(MatCURFixedTol<T> {}); compress_tree(MatCURFixedTol<T> {reltol, maxBondDim}); }
+
     void save(std::ostream &out) const
     {
         tree.save(out);
@@ -155,7 +184,7 @@ public:
     /// sum up the the tensors from the root node at *from* to a neighbouring node *to*
     arma::Row<T> sumRoot(int from, int to, arma::Cube<T> const& M)
     {
-        auto LM = cubeToMat(M, tree.neigh.at(from).pos(to));
+        auto LM = cubeToMat_R(M, tree.neigh.at(from).pos(to));
         auto w = arma::Row<T>(LM.n_rows, arma::fill::ones);
         return w * LM;
     }
