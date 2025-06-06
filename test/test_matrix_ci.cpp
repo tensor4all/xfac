@@ -2,6 +2,7 @@
 #include "xfac/tensor/tensor_ci.h"
 #include "xfac/grid.h"
 #include "xfac/matrix/mat_decomp.h"
+#include <chrono>
 
 using namespace arma;
 using namespace xfac;
@@ -178,6 +179,33 @@ TEST_CASE("cur")
         A(0,0)=-1;
         CURDecomp<double> sol(A);
         REQUIRE(arma::norm(A-sol.left()*sol.right())<tol);
+    }
+
+    SECTION("timing") {
+        using namespace std;
+        cout<<"n time_svd time_rrlu time_rrlu_new\n";
+        for(int n=500; n<=1500; n+=500) {
+            mat A1(n,n/2,arma::fill::randu);
+            mat A2(n/2,n,arma::fill::randu);
+            mat A=A1*A2;
+            auto t0 = std::chrono::high_resolution_clock::now();
+            cout<<n;
+            {
+                SVDDecomp<double> sol(A,true,0.0,0);
+                auto t1 = std::chrono::high_resolution_clock::now();
+                auto dt=std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0).count();
+                cout<<" "<<dt*1e-3;
+                t0=t1;
+            }
+            for(bool fast:{false,true}) {
+                CURDecomp<double> sol(A,true,0.0,0,fast);
+                auto t1 = std::chrono::high_resolution_clock::now();
+                auto dt=std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0).count();
+                cout<<" "<<dt*1e-3;
+                t0=t1;
+            }
+            cout<<endl;
+        }
     }
 }
 
