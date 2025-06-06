@@ -101,6 +101,34 @@ TEST_CASE( "Test tensor CI 2" )
                 REQUIRE( abs(ci2.tt.sum(vector(dim,wi))-cmpx(8.4999,60.8335))<1e-3 );
             }
         }
+
+        SECTION( "condition" )
+        {
+            TensorCI2Param p;
+            p.bondDim=120;
+            p.fullPiv=true;
+            p.cond=[&xi=xi](vector<int> const& id)
+            {
+                double sum=0;
+                for(auto i:id) sum+=xi[i];
+                return sum<=1;
+            };
+            auto ci=CTensorCI2<cmpx,double>(f,vector(dim,xi), p);
+            cout<<"rank nEval LastSweepPivotError\n";
+            for(int r=1; r <= 5; r++)
+            {
+                ci.iterate();
+                cout << r << " " << count << " " << ci.pivotError.back() << endl;
+            }
+            for(auto b=0; b<ci.len()-1; b++){  // all bonds
+                cout << "bond b=" << b << " npivot=" << ci.Iset[b+1].size() << endl;
+                for(auto r=0u; r<ci.Iset[b+1].size(); r++) { // all pivots
+                    cout << "pivot r=" << r << endl;
+                    MultiIndex ij=ci.Iset[b+1].at(r)+ci.Jset[b].at(r);
+                    REQUIRE( ci.param.cond( vector<int>(ij.begin(),ij.end()) ) );
+                }
+            }
+        }
     }
 
     SECTION( "global pivot" )
@@ -124,7 +152,7 @@ TEST_CASE( "Test tensor CI 2" )
             for(auto const& x : ci.tt.M) cout<<x.n_slices<<" ";
             cout<<"trueError="<<ci.trueError()<<endl;
         }
-    }
+    }   
 }
 
 TEST_CASE("quantics 2")

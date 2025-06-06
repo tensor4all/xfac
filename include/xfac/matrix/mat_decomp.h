@@ -102,6 +102,7 @@ struct RRLUDecomp {
 
     vector<int> Iset, Jset; ///< permutation of rows and columns
     arma::Mat<T> L, U;
+    arma::Mat<unsigned int> cond;
     bool leftOrthogonal=true;
     int npivot=0;
     double error=0;
@@ -114,6 +115,13 @@ struct RRLUDecomp {
         , Jset (iota(A.n_cols))
     { calculate(A, reltol, rankMax); }
 
+    RRLUDecomp(arma::Mat<T> const& A, arma::Mat<unsigned int> const& cond_, bool leftOrthogonal_=true, double reltol=0, int rankMax=0)
+        : leftOrthogonal(leftOrthogonal_)
+        , Iset (iota(A.n_rows))
+        , Jset (iota(A.n_cols))
+        , cond{cond_}
+    { calculate(A, reltol, rankMax); }
+
     void calculate(arma::Mat<T> A, double reltol, int rankMax)
     {
         npivot= std::min(A.n_rows, A.n_cols);
@@ -122,7 +130,8 @@ struct RRLUDecomp {
         if (rankMax>0 && rankMax<npivot) npivot=rankMax;
         for(auto k=0u; k<npivot; k++) {
             // find pivot
-            auto p=arma::abs( A(arma::span(k,A.n_rows-1), arma::span(k,A.n_cols-1)) ).index_max();
+            auto p= (cond.is_empty()) ? arma::abs( A(arma::span(k,A.n_rows-1), arma::span(k,A.n_cols-1)) ).index_max()
+                                      : arma::abs( A(arma::span(k,A.n_rows-1), arma::span(k,A.n_cols-1)) % cond(arma::span(k,A.n_rows-1), arma::span(k,A.n_cols-1)) ).index_max();
             auto i0=p%(A.n_rows-k)+k;      // was relative to the corner (k,k)
             auto j0=p/(A.n_rows-k)+k;
             if (double err=std::abs(A(i0,j0));
@@ -133,6 +142,10 @@ struct RRLUDecomp {
             std::swap(Jset[k],Jset[j0]);
             A.swap_rows(k,i0);
             A.swap_cols(k,j0);
+            if (!cond.is_empty()){
+                cond.swap_rows(k,i0);
+                cond.swap_cols(k,j0);
+            }
             // update the error, i.e. make Gaussian elimination
             auto rows=arma::span(k+1,A.n_rows-1);
             auto cols=arma::span(k+1,A.n_cols-1);
@@ -144,7 +157,8 @@ struct RRLUDecomp {
                 A(rows,cols) -= A(rows,k)*A(k,cols) ;
         }
         if (npivot<std::min(A.n_rows, A.n_cols))
-            error=arma::abs( A(arma::span(npivot,A.n_rows-1), arma::span(npivot,A.n_cols-1)) ).max();
+            error = (cond.is_empty()) ? arma::abs( A(arma::span(npivot,A.n_rows-1), arma::span(npivot,A.n_cols-1)) ).max()
+                                      : arma::abs( A(arma::span(npivot,A.n_rows-1), arma::span(npivot,A.n_cols-1)) % cond(arma::span(npivot,A.n_rows-1), arma::span(npivot,A.n_cols-1))).max();
         readLU(A);
     }
 
@@ -231,8 +245,8 @@ struct MatRRLUFixedTol: public MatDecompFixedTol<RRLUDecomp<T>> {
 
 template<class T>
 struct MatFun {
-    size_t n_rows;
-    size_t n_cols;
+    size_t n_rows=0;
+    size_t n_cols=0;
     std::function<arma::Mat<T>(vector<int>, vector<int>)> submat;
 };
 
@@ -251,14 +265,20 @@ struct ARRLUDecomp: public RRLUDecomp<T> {
     using RRLUDecomp<T>::L;
     using RRLUDecomp<T>::U;
     using RRLUDecomp<T>::RRLUDecomp;
+    MatFun<unsigned int> fCond;
 
-    ARRLUDecomp(MatFun<T> fA, vector<int> I0, vector<int> J0, bool leftOrthogonal_=true, ARRLUParam param={})
+    ARRLUDecomp(MatFun<T> fA, MatFun<unsigned int> fCond, vector<int> I0, vector<int> J0, bool leftOrthogonal_=true, ARRLUParam param={})
     {
         RRLUDecomp<T>::leftOrthogonal=leftOrthogonal_;
         RRLUDecomp<T>::Iset=iota(fA.n_rows);
         RRLUDecomp<T>::Jset=iota(fA.n_cols);
 
-        if (param.fullPiv) { this->calculate(fA.submat(Iset,Jset), param.reltol, param.bondDim); return; }
+        if (param.fullPiv) {
+            if (fCond.n_rows != 0 && fCond.n_cols != 0)
+                this->cond = fCond.submat(Iset,Jset);
+            this->calculate(fA.submat(Iset,Jset), param.reltol, param.bondDim);
+            return;
+        }
 
         int rankMax=std::min(fA.n_rows,fA.n_cols);
         if (param.bondDim>0 && param.bondDim<rankMax) rankMax=param.bondDim;
@@ -266,21 +286,23 @@ struct ARRLUDecomp: public RRLUDecomp<T> {
         do {
             // take new random rows or cols trying to duplicate the rank
             if (!leftOrthogonal_)
-                for(auto x : take_n_random(set_diff(fA.n_rows, I0), std::max(1ul, I0.size())) ) I0.push_back(x);
+              for(auto x : take_n_random(set_diff(fA.n_rows, I0), std::max(1ul, I0.size())) ) I0.push_back(x);
             else
-                for(auto x : take_n_random(set_diff(fA.n_cols, J0), std::max(1ul, J0.size())) ) J0.push_back(x);
+              for(auto x : take_n_random(set_diff(fA.n_cols, J0), std::max(1ul, J0.size())) ) J0.push_back(x);
 
             // iterate
             for(int k=0; k<param.nRookIter; k++)
             {
-                arma::Mat<T> A= (k%2==leftOrthogonal_) ? fA.submat(I0, Jset) : fA.submat(Iset,J0);
-                this->calculate(A, param.reltol, param.bondDim);
-                auto I1= this->row_pivots();
-                auto J1= this->col_pivots();
-                if(I1.size()<std::min(A.n_rows,A.n_cols)) is_low_rank=true;
-                if (I0==I1 && J0==J1) break; // rook condition
-                I0=I1;
-                J0=J1;
+              arma::Mat<T> A= (k%2==leftOrthogonal_) ? fA.submat(I0, Jset) : fA.submat(Iset,J0);
+              if (fCond.n_rows != 0 && fCond.n_cols != 0)
+                  this->cond = (k%2==leftOrthogonal_) ? fCond.submat(I0, Jset) : fCond.submat(Iset,J0);
+              this->calculate(A, param.reltol, param.bondDim);
+              auto I1= this->row_pivots();
+              auto J1= this->col_pivots();
+              if(I1.size()<std::min(A.n_rows,A.n_cols)) is_low_rank=true;
+              if (I0==I1 && J0==J1) break; // rook condition
+              I0=I1;
+              J0=J1;
             }
         }  while(I0.size()<rankMax && !is_low_rank);
 
@@ -288,17 +310,21 @@ struct ARRLUDecomp: public RRLUDecomp<T> {
 
         if (L.n_rows<fA.n_rows) { // complete the L
             auto L2=fA.submat(vector(Iset.begin()+npivot, Iset.end()),
-                              vector(Jset.begin(), Jset.begin()+npivot));
+                                vector(Jset.begin(), Jset.begin()+npivot));
             apply_LU_on_rows(L2, this->PivotMatrixTri(), leftOrthogonal_);
             L=arma::join_vert(L,L2);
         }
         if (this->U.n_cols<fA.n_cols) { // complete the U
             auto U2=fA.submat(vector(Iset.begin(), Iset.begin()+npivot),
-                         vector(Jset.begin()+npivot, Jset.end()));
+                                vector(Jset.begin()+npivot, Jset.end()));
             apply_LU_on_cols(U2, this->PivotMatrixTri(), leftOrthogonal_);
             U=arma::join_horiz(U,U2);
         }
     }
+
+    ARRLUDecomp(MatFun<T> fA, vector<int> I0, vector<int> J0, bool leftOrthogonal_=true, ARRLUParam param={})
+        : ARRLUDecomp(fA, {}, I0, J0, leftOrthogonal_, param)
+    {}
 };
 
 
@@ -328,6 +354,18 @@ struct CURDecomp: public ARRLUDecomp<T> {
 
     CURDecomp(MatFun<T> fA, vector<int> const& I0, vector<int> const& J0, bool leftOrthogonal=true, ARRLUParam param={})
         : ARRLUDecomp<T>(fA, I0, J0, leftOrthogonal, param)
+        , C(fA.submat(iota(fA.n_rows), col_pivots()))
+        , R(fA.submat(row_pivots(), iota(fA.n_cols)))
+    {}
+
+    CURDecomp(arma::Mat<T> const& A_, arma::Mat<unsigned int> const& fCond_, bool leftOrthogonal_=true, double reltol=1e-14, int rankMax=0)
+        : ARRLUDecomp<T>(A_, fCond_, leftOrthogonal_,reltol,rankMax)
+        , C(A_.cols(arma::conv_to<arma::uvec>::from(col_pivots())))
+        , R(A_.rows(arma::conv_to<arma::uvec>::from(row_pivots())))
+    {}
+
+    CURDecomp(MatFun<T> fA, MatFun<unsigned int> const& fCond_, vector<int> const& I0, vector<int> const& J0, bool leftOrthogonal=true, ARRLUParam param={})
+        : ARRLUDecomp<T>(fA, fCond_, I0, J0, leftOrthogonal, param)
         , C(fA.submat(iota(fA.n_rows), col_pivots()))
         , R(fA.submat(row_pivots(), iota(fA.n_cols)))
     {}
