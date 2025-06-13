@@ -71,8 +71,11 @@ struct TensorCI2 {
             Iset[b].push_back({param.pivot1.begin(), param.pivot1.begin()+b});
             Jset[b].push_back({param.pivot1.begin()+b+1, param.pivot1.end()});
         }
-        if (param.cond)
+        if (param.cond){
+            if (!param.cond(param.pivot1))
+                throw std::invalid_argument("First pivot does not fulfill the condition function, expecting cond(f(pivot1))=true.");
             fCond = TensorFunction<unsigned int>{param.cond};
+        }
         iterate(1,0); // just to define tt
     }
 
@@ -123,6 +126,11 @@ struct TensorCI2 {
             tt_.M[b+1]=arma::Cube<T>(M2.memptr(), M2.n_rows, tt_.M[b+1].n_cols, tt_.M[b+1].n_slices);
             Iset[b+1]= Iset[b+1].at(ci.row_pivots());
             Jset[b]= Jb.at(ci.col_pivots());
+        }
+        if (param.cond){
+            if (!param.cond(param.pivot1))
+                throw std::invalid_argument("First pivot does not fulfill the condition function, expecting cond(f(pivot1))=true.");
+            fCond = TensorFunction<unsigned int>{param.cond};
         }
         iterate(1,0); // just to define tt, while reevaluating the original f in the pivots.
     }

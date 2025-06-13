@@ -29,6 +29,7 @@ template<class T>
 struct TensorTreeCI {
     TopologyTree tree;
     TensorFunction<T> f;                                    ///< the tensor function f:(a1,a2,...,an)->T
+    TensorFunction<unsigned int> fCond;                     ///< the condition function f:(a1,a2,...,an)->uint which returns 1 if param.cond=true, else 0
     TensorCIParam param;                                   ///< parameters of the algorithm
     vector<double> pivotError;                              ///< max pivot error for each rank
     vector< IndexSet<MultiIndex> > localSet;    ///< collection of MultiIndex for each site: left, site, and right set of multiindex
@@ -63,7 +64,11 @@ struct TensorTreeCI {
                 localSet[p].push_back(lset);
             }
         }
-
+        if (param.cond){
+            if (!param.cond(param.pivot1))
+                throw std::invalid_argument("First pivot does not fulfill the condition function, expecting cond(f(pivot1))=true.");
+            fCond = TensorFunction<unsigned int>{param.cond, false, false};
+        }
         addPivotsAllBonds(enrich_pivot1());
     }
 
@@ -124,7 +129,8 @@ struct TensorTreeCI {
 
     void dmrg0_updatePivotAt(int from, int to)
     {
-        auto ci=CURDecomp<T> { f.eval(Iset[{from, to}], Iset[{to, from}]), true, param.reltol, param.bondDim };
+        auto ci = (param.cond) ? CURDecomp<T> { f.eval(Iset[{from, to}], Iset[{to, from}]), fCond.eval(Iset[{from, to}], Iset[{to, from}]), true, param.reltol, param.bondDim }
+                               : CURDecomp<T> { f.eval(Iset[{from, to}], Iset[{to, from}]), true, param.reltol, param.bondDim };
 
         Iset[{from, to}] = Iset[{from, to}].at(ci.row_pivots());
         Iset[{to, from}] = Iset[{to, from}].at(ci.col_pivots());
@@ -139,7 +145,8 @@ struct TensorTreeCI {
         IndexSet<MultiIndex> I = set_union(I0[{from, to}], kronecker(from, to));
         IndexSet<MultiIndex> J = set_union(I0[{to, from}], kronecker(to, from));
 
-        auto ci=CURDecomp<T> { f.matfun(I, J), I.pos(Iset[{from, to}]), J.pos(Iset[{to, from}]), true, param };
+        auto ci = (param.cond) ? CURDecomp<T> { f.matfun(I, J), fCond.matfun(I, J), I.pos(Iset[{from, to}]), J.pos(Iset[{to, from}]), true, param }
+                               : CURDecomp<T> { f.matfun(I, J), I.pos(Iset[{from, to}]), J.pos(Iset[{to, from}]), true, param };
 
         Iset[{from, to}]=I.at(ci.row_pivots());
         Iset[{to, from}]=J.at(ci.col_pivots());
