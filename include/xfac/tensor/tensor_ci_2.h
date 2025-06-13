@@ -31,6 +31,7 @@ struct TensorCI2Param {
 template<class T>
 struct TensorCI2 {
     TensorFunction<T> f;                                    ///< the tensor function f:(a1,a2,...,an)->T
+    TensorFunction<unsigned int> fCond;                     ///< the condition function f:(a1,a2,...,an)->uint which returns 1 if param.cond=true, else 0
     TensorCI2Param param;                                   ///< parameters of the algorithm
     vector<double> pivotError;                              ///< max pivot error for each rank
     vector< IndexSet<MultiIndex> > Iset, localSet, Jset;    ///< collection of MultiIndex for each site: left, site, and right set of multiindex
@@ -69,6 +70,11 @@ struct TensorCI2 {
         for(auto b=0u; b<len(); b++) {
             Iset[b].push_back({param.pivot1.begin(), param.pivot1.begin()+b});
             Jset[b].push_back({param.pivot1.begin()+b+1, param.pivot1.end()});
+        }
+        if (param.cond){
+            if (!param.cond(param.pivot1))
+                throw std::invalid_argument("First pivot does not fulfill the condition function, expecting cond(f(pivot1))=true.");
+            fCond = TensorFunction<unsigned int>{param.cond};
         }
         iterate(1,0); // just to define tt
     }
@@ -120,6 +126,11 @@ struct TensorCI2 {
             tt_.M[b+1]=arma::Cube<T>(M2.memptr(), M2.n_rows, tt_.M[b+1].n_cols, tt_.M[b+1].n_slices);
             Iset[b+1]= Iset[b+1].at(ci.row_pivots());
             Jset[b]= Jb.at(ci.col_pivots());
+        }
+        if (param.cond){
+            if (!param.cond(param.pivot1))
+                throw std::invalid_argument("First pivot does not fulfill the condition function, expecting cond(f(pivot1))=true.");
+            fCond = TensorFunction<unsigned int>{param.cond};
         }
         iterate(1,0); // just to define tt, while reevaluating the original f in the pivots.
     }
@@ -230,7 +241,8 @@ protected:
         IndexSet<MultiIndex> Jb=set_union(J0[b], kron(localSet[b+1],Jset[b+1])) ;
         auto p1=param;
 //        p1.bondDim=std::min(p1.bondDim, (int)Iset[b+1].size()*2);           // limit the rank increase to duplication only
-        auto ci=CURDecomp<T> { f.matfun(Ib,Jb), Ib.pos(Iset[b+1]), Jb.pos(Jset[b]), b<center, p1 };
+        auto ci = (param.cond) ? CURDecomp<T> { f.matfun(Ib,Jb), fCond.matfun(Ib,Jb), Ib.pos(Iset[b+1]), Jb.pos(Jset[b]), b<center, p1 }
+                               : CURDecomp<T> { f.matfun(Ib,Jb), Ib.pos(Iset[b+1]), Jb.pos(Jset[b]), b<center, p1 };
         Iset[b+1]=Ib.at(ci.row_pivots());
         Jset[b]=Jb.at(ci.col_pivots());
         P[b]=ci.PivotMatrixTri();
@@ -245,7 +257,8 @@ protected:
         bool isLeft=b<center;
         IndexSet<MultiIndex> Ib= isLeft ? kron(Iset[b],localSet[b]) : Iset[b+1].from_int() ;
         IndexSet<MultiIndex> Jb= isLeft ? Jset[b].from_int() : kron(localSet[b+1],Jset[b+1]);
-        auto ci=CURDecomp<T> { f.eval(Ib,Jb), isLeft, param.reltol, param.bondDim };
+        auto ci = (param.cond) ? CURDecomp<T> { f.eval(Ib,Jb), fCond.eval(Ib,Jb), isLeft, param.reltol, param.bondDim }
+                               : CURDecomp<T> { f.eval(Ib,Jb), isLeft, param.reltol, param.bondDim };
         Iset[b+1]= Ib.at(ci.row_pivots());
         Jset[b]= Jb.at(ci.col_pivots());
         P[b]=ci.PivotMatrixTri();
@@ -263,7 +276,8 @@ protected:
     /// update the pivots at bond b using the P matrix
     void dmrg0_updatePivotAt(int b)
     {
-        auto ci=CURDecomp<T> { f.eval(Iset[b+1],Jset[b]), b<center, param.reltol, param.bondDim };
+        auto ci = (param.cond) ? CURDecomp<T> { f.eval(Iset[b+1],Jset[b]), fCond.eval(Iset[b+1],Jset[b]), b<center, param.reltol, param.bondDim }
+                               : CURDecomp<T> { f.eval(Iset[b+1],Jset[b]), b<center, param.reltol, param.bondDim };
         Iset[b+1]=Iset[b+1].at(ci.row_pivots());
         Jset[b]=Jset[b].at(ci.col_pivots());
         P[b]=ci.PivotMatrixTri();
