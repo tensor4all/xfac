@@ -262,3 +262,111 @@ TEST_CASE( "Test tensor tree" )
         }
     }
 }
+
+TEST_CASE( "tree overlap")
+{
+    auto FF1=[](const double dim, vector<double> const& idx, const double fac) { //OBC
+        int len = idx.size();
+        arma::vec vecX(len); // x = {1,...,N}/(N+1)
+        transform(idx.begin(), idx.end(), vecX.begin(), [&dim](double val) {
+            return (val+1)/(dim+1);
+        });
+
+        arma::mat matrix(len,len);
+        for (int ii=0; ii<len; ii++) {//position
+            for (int jj=0; jj<len; jj++) {//states
+                matrix(ii,jj) = sqrt(2/(dim+1)) * sin(M_PI * vecX(ii) * (jj+1)) * fac;
+            }
+        }
+        return det(matrix);
+    };
+
+    int  len = 4; // # of branch
+    int  dim = 8; // Dim = 2^bit
+    int  bit = 3; //
+
+    int  minD = 20;
+    int  incD = 2;
+    int  maxD = 60;
+
+    // FUN
+    grid::Quantics grid{0., (double)dim, bit, len};
+    long count = 0;
+    double fac = 1;
+    auto fun = [=,&dim,&count,&fac](vector<int> const& id) {
+        auto config = grid.id_to_coord(id);
+        for (int ii = 0; ii < config.size()-1; ii++) {
+            if (config[ii] >= config[ii+1]){
+                return 1E-30;
+            }
+        }
+        count++;
+        return FF1(dim, config, fac) + 1E-30;
+    };
+
+    // SEED
+    double maxF = 0.0;
+    vector<vector<int>> seed;
+    for (int delta=1; delta<=floor(dim/len); ++delta) {
+        for (int jj=0; delta*(len-1)+jj < dim; ++jj) {
+
+            vector<double> init(len);
+            fill(init.begin(), init.end(), delta);
+            init.at(0) = jj;
+
+            partial_sum(init.begin(), init.end(), init.begin(), plus<double>());
+            auto id = grid.coord_to_id(init);
+
+            double val = fun(id);
+            seed.push_back(id);
+            if (abs(val) > maxF)
+                maxF = abs(val);
+        }
+    }
+
+    // TCI INIT
+    TensorCIParam pp;
+    pp.pivot1 = seed.back();
+    seed.pop_back();
+    pp.bondDim = minD;
+    pp.reltol = 1e-20;
+    pp.fullPiv=true;
+
+    auto tree = makeTuckerTree(len, bit);
+    auto ci = TensorTreeCI<double>(fun, tree, grid.tensorDims(), pp);
+    if (seed.size()>0) {
+        ci.addPivotsAllBonds(seed);
+    }
+    ci.iterate(20,2);
+    cout << "ITER "
+         << setw(10) << ci.param.bondDim << " "
+         << setw(10) << scientific << setprecision(2) << ci.pivotError.front() << " "
+         << setw(10) << scientific << setprecision(2) << ci.pivotError.back() << " "
+         << setw(10) << scientific << setprecision(2) << ci.pivotError.back()/ci.pivotError.front() << " ";
+
+    // THIS SEEMS NOT WORKING
+    cout   << setw(20) << scientific << setprecision(8) << ci.tt.norm2();
+    cout << endl;
+
+    // I check norm2 element by element
+    double ERR = 0.0;
+    for (int ii=0; ii<dim; ii++) {
+        for (int jj=ii; jj<dim; jj++) {
+            for (int kk=jj; kk<dim; kk++) {
+                for (int ll=kk; ll<dim; ll++) {
+
+                    vector<double> chk;
+                    chk.push_back((double)ii);
+                    chk.push_back((double)jj);
+                    chk.push_back((double)kk);
+                    chk.push_back((double)ll);
+
+                    auto id = grid.coord_to_id(chk);
+                    ERR += pow(ci.tt.eval(id), 2);
+                }
+            }
+        }
+    }
+    cout << "NORM2 = " << ERR << endl;
+    REQUIRE(std::abs(ERR-ci.tt.norm2())<1e-5);
+}
