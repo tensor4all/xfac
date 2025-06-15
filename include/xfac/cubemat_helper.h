@@ -37,14 +37,14 @@ arma::Mat<T> cubeToMat_R(arma::Cube<T> const& A, int cube_pos)
     if (cube_pos==0) { // reshape a cube as a matrix B(jk,i)=A(i,j,k)
         arma::Mat<T> c(A.n_cols * A.n_slices, A.n_rows);
         for(auto i=0u; i<A.n_rows; i++){
-            arma::Mat<T> ajk = A.row(i);
+            arma::Mat<T> ajk = A.row_as_mat(i).st();
             c.col(i) = arma::Col<T>(ajk.memptr(), A.n_cols * A.n_slices);
         }
         return c;
     } else if (cube_pos==1) { // reshape a cube as a matrix B(ik,j)=A(i,j,k)
         arma::Mat<T> c(A.n_rows * A.n_slices, A.n_cols);
         for(auto j=0u; j<A.n_cols; j++){
-            arma::Mat<T> aik = A.col(j);
+            arma::Mat<T> aik = A.col_as_mat(j);
             c.col(j) = arma::Col<T>(aik.memptr(), A.n_rows * A.n_slices);
         }
         return c;
@@ -62,14 +62,14 @@ arma::Mat<T> cubeToMat_L(arma::Cube<T> const& A, int cube_pos)
     if (cube_pos==0) { // reshape a cube as a matrix B(i,jk)=A(i,j,k)
         arma::Mat<T> c(A.n_rows, A.n_cols * A.n_slices);
         for(auto i=0u; i<A.n_rows; i++){
-            arma::Mat<T> ajk = A.row(i);
+            arma::Mat<T> ajk = A.row_as_mat(i).st();
             c.row(i) = arma::Row<T>(ajk.memptr(), A.n_cols * A.n_slices);
         }
         return c;
     } else if (cube_pos==1) { // reshape a cube as a matrix B(j,ik)=A(i,j,k)
         arma::Mat<T> c(A.n_cols, A.n_rows * A.n_slices);
         for(auto j=0u; j<A.n_cols; j++){
-            arma::Mat<T> aik = A.col(j);
+            arma::Mat<T> aik = A.col_as_mat(j);
             c.row(j) = arma::Row<T>(aik.memptr(), A.n_rows * A.n_slices);
         }
         return c;
@@ -110,7 +110,7 @@ arma::Cube<T> cube_vec(arma::Cube<T> const& a, arma::Col<T> const& b, int cube_p
         if (a.n_slices!=b.n_elem) throw std::invalid_argument("a.n_slices!=b.n_elem for cube_pos==2");
         arma::Cube<T> c(a.n_rows, a.n_cols, 1, arma::fill::zeros);
         for(auto i=0u; i<a.n_rows; i++){
-            arma::Mat<T> ajk = a.row(i);
+            arma::Mat<T> ajk = a.row_as_mat(i).st();
             c.row(i) = ajk * b;
         }
         return c;
@@ -143,7 +143,7 @@ arma::Cube<T> cube_mat(arma::Cube<T> const& a, arma::Mat<T> const& b, int cube_p
         if (a.n_slices!=b.n_rows) throw std::invalid_argument("a.n_slices!=b.n_rows for cube_pos==2");
         arma::Cube<T> c(a.n_rows, a.n_cols, b.n_cols, arma::fill::zeros);
         for(auto i=0u; i<a.n_rows; i++){
-            arma::Mat<T> ajk = a.row(i);
+            arma::Mat<T> ajk = a.row_as_mat(i).st();
             c.row(i) = ajk * b;
         }
         return c;
@@ -176,7 +176,7 @@ arma::Cube<T> mat_cube(arma::Mat<T> const& b, arma::Cube<T> const& a, int cube_p
         if (a.n_slices!=b.n_cols) throw std::invalid_argument("a.n_slices!=b.n_cols for cube_pos==2");
         arma::Cube<T> c(a.n_rows, a.n_cols, b.n_rows, arma::fill::zeros);
         for(auto i=0u; i<a.n_rows; i++){
-            arma::Mat<T> ajk = a.row(i);
+            arma::Mat<T> ajk = a.row_as_mat(i).st();
             c.row(i) = ajk * b.st();
         }
         return c;
