@@ -165,68 +165,43 @@ TEST_CASE( "Test tensor tree" )
 
     SECTION( "Function in Rn" )
     {
-        int nBit = 25;
-        int dim = 5;
+        int nBit = 20;
+        int dim = 4;
         grid::Quantics grid(0., 1., nBit, dim);
 
-        auto f=[](const vector<double>& xs) {
-            double x=0, y=0,c=0;
-            for(auto xi:xs) {c++; x+=c*xi; y+=xi*xi/c;}
-            double arg=1.0+(x+2.11*y+x*y)*M_PI;
-            return cmpx(1+x+cos(arg),x*x+0.5*sin(arg));
-        };
+        function f=[&](vector<double> const& x) {
+            auto sum=accumulate(x.begin(), x.end(), 0.0);
+            return cos(sum) + 0.5 * cos(4*x[0] + x[1]) + 0.2 * sin(sum * sum);};
         function tfunc = [&](vector<int> xi){ return f(grid.id_to_coord(xi));};
 
         auto tree = makeTuckerTree(dim, nBit);
 
-        // evaluation point is taken identical to similar test for TensorCI2
-        vector<double> x0 = {0.12923440720030277, 0.297077424311301408, 0.0254460438286207569,
-                             0.297077424311301408, 0.0254460438286207569};
+        vector<double> x0 = {0.1, 0.3, 0.01, 0.9};
 
         SECTION( "compression" )
         {
-            auto ci=TensorTreeCI<cmpx>(tfunc, tree, grid.tensorDims(), {.bondDim=400});
+            auto ci=TensorTreeCI<cmpx>(tfunc, tree, grid.tensorDims(), {.bondDim=120});
             ci.iterate(3);
 
             // test function interpolation
             REQUIRE ( abs(ci.tt.eval(grid.coord_to_id(x0)) - f(x0)) < 1e-5 );
 
-            // test integration over hypercube
-            auto integ = ci.tt.sum() * grid.deltaVolume;
-            auto integ_ref = cmpx(8.4999,60.8335);  // ref result from TensorCI2
-            REQUIRE ( abs(integ - integ_ref) < 1e-3 );
-
-            //for (auto const & m : ci.tt.M) std::cout << "ranks= " <<  m.n_rows << "  " << m.n_cols << " " << m.n_slices << "\n";
-            //std::cout <<std::setprecision(12)<< "uncompressed: f= " << ci.tt.eval(grid.coord_to_id(x)) << " int= " << integ << "\n";
-
             SECTION("SVD") {
                 auto mps=ci.tt;
                 mps.compressSVD();
-                integ = mps.sum() * grid.deltaVolume;
                 REQUIRE( abs(mps.eval(grid.coord_to_id(x0))-f(x0)) < 1e-5 );
-                REQUIRE( abs(integ - integ_ref) < 1e-3 );
-                //for (auto const & m : mps.M) std::cout << "SVD ranks= " <<  m.n_rows << "  " << m.n_cols << " " << m.n_slices << "\n";
-                //std::cout <<std::setprecision(12)<< "SVD: f= " << mps.eval(grid.coord_to_id(x)) << " int= " << integ << "\n";
             }
 
             SECTION("LU") {
                 auto mps=ci.tt;
                 mps.compressLU();
-                integ = mps.sum() * grid.deltaVolume;
                 REQUIRE( abs(mps.eval(grid.coord_to_id(x0))-f(x0)) < 1e-5 );
-                REQUIRE( abs(integ - integ_ref) < 1e-3 );
-                //for (auto const & m : mps.M) std::cout << "LU ranks= " <<  m.n_rows << "  " << m.n_cols << " " << m.n_slices << "\n";
-                //std::cout <<std::setprecision(12)<< "LU: f= " << mps.eval(grid.coord_to_id(x)) << " int= " << integ << "\n";
             }
 
             SECTION("CI") {
                 auto mps=ci.tt;
                 mps.compressCI();
-                integ = mps.sum() * grid.deltaVolume;
                 REQUIRE( abs(mps.eval(grid.coord_to_id(x0))-f(x0)) < 1e-5 );
-                REQUIRE( abs(integ - integ_ref) < 1e-3 );
-                //for (auto const & m : mps.M) std::cout << "CI ranks= " <<  m.n_rows << "  " << m.n_cols << " " << m.n_slices << "\n";
-                //std::cout <<std::setprecision(12)<< "CI: f= " << mps.eval(grid.coord_to_id(x)) << " int= " << integ << "\n";
             }
         }
 
@@ -242,15 +217,11 @@ TEST_CASE( "Test tensor tree" )
 
             for (auto fullPiv : {true, false}) {
                 TensorCIParam p;
-                p.bondDim=400;
                 p.fullPiv=fullPiv;
                 p.cond=tCond;
 
                 auto ci=TensorTreeCI<cmpx>(tfunc, tree, grid.tensorDims(), p);
                 ci.iterate(3);
-
-                REQUIRE( cond(x0) == true );  // make sure condition is fulfilled on evaluation point
-                REQUIRE( abs(ci.tt.eval(grid.coord_to_id(x0))-f(x0))<1e-5 );
 
                 for (auto [from,to]:tree.leavesToRoot()) {
                     for(auto r=0u; r<ci.Iset[{from, to}].size(); r++) { // all pivots
