@@ -11,6 +11,44 @@ using namespace xfac;
 using cmpx=std::complex<double>;
 
 
+
+/// Return the bitvector of a number, fastest bit on the left
+auto number_to_bitvec = [](unsigned long long num, int nBit){
+    assert (nBit <= 64);
+    std::bitset<64> bset(num);
+    vector<int> bvec(nBit, 0);
+    for(auto d=0; d<nBit; d++)
+        bvec[d] = bset[d];
+    return bvec;
+};
+
+template< typename T >
+std::ostream & operator<<( std::ostream & o, const std::vector<T> & vec ) {
+    o <<  "[ ";
+    for (auto elem : vec)
+        o << elem << ", ";
+    o <<  "]";
+    return o;
+}
+
+
+TEST_CASE( "Test quantics rounding" )
+{
+    double a = 1;
+    double b = 4 * M_PI;
+    int nBit = 10;
+    grid::Quantics grid(a, b, nBit);
+
+    for (auto i=0; i < pow(2, nBit); i++){
+        auto bitvec = number_to_bitvec(i, nBit);
+        auto x = grid.id_to_coord(bitvec);
+        auto bitvec_from_x = grid.coord_to_id(x);
+        std::cout << i << " "<< x[0]  << " " <<  bitvec <<  " " << bitvec_from_x << " " << bool(bitvec == bitvec_from_x) << "\n";
+        //REQUIRE (bitvec == bitvec_from_x);
+    }
+}
+
+
 TEST_CASE( "Test tensor CI" )
 {
     SECTION( "cos" )
