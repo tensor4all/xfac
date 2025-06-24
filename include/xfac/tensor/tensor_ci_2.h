@@ -20,8 +20,9 @@ struct TensorCI2Param {
     vector<vector<double>> weight;          ///< TODO: weight for the tt sum. When not empty, it activates the ENV learning
     function<bool(vector<int>)> cond;       ///< TODO: cond(x)=false when x should not be a pivot
     bool useCachedFunction=true;            ///< whether the internal caching should be used to avoid function call to the same point.
+    bool accumulate=false;                  ///< whether to update the pivots in accumulative or in reset mode
 
-    operator ARRLUParam() const { return {.reltol=reltol, .bondDim=bondDim, .fullPiv=fullPiv, .nRookIter=nRookIter}; }
+    operator ARRLUParam() const { return {.reltol=reltol, .bondDim=bondDim, .fullPiv=fullPiv, .nRookIter=nRookIter, .accumulate=accumulate}; }
 };
 
 

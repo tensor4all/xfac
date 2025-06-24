@@ -118,6 +118,7 @@ struct RRLUDecomp {
         , Jset (iota(A.n_cols))
     { calculate(A, reltol, rankMax, cond_); }
 
+    /// perform the decomposition in reset mode
     void calculate(arma::Mat<T> A, double reltol, int rankMax, arma::Mat<unsigned int> cond = {})
     {
         npivot= std::min(A.n_rows, A.n_cols);
@@ -125,40 +126,62 @@ struct RRLUDecomp {
         double max_error=0;
         if (rankMax>0 && rankMax<npivot) npivot=rankMax;
 
-        for(auto k=0u; k<npivot; k++) {
-            auto p= (cond.is_empty()) ? arma::abs( A(arma::span(k,A.n_rows-1), arma::span(k,A.n_cols-1)) ).index_max()
-                                      : arma::abs( A(arma::span(k,A.n_rows-1), arma::span(k,A.n_cols-1)) % cond(arma::span(k,A.n_rows-1), arma::span(k,A.n_cols-1)) ).index_max();
-            auto i0=p%(A.n_rows-k)+k;      // was relative to the corner (k,k)
-            auto j0=p/(A.n_rows-k)+k;
-            if (!cond.is_empty())
-                if (cond(i0, j0) == 0) { npivot=k; break; };
-            if (double err=std::abs(A(i0,j0));
-                k>0 && err < reltol*max_error) { npivot=k; break; }
-            else max_error=std::max(max_error, err);
-            // move it to position k,k
-            std::swap(Iset[k],Iset[i0]);
-            std::swap(Jset[k],Jset[j0]);
-            A.swap_rows(k,i0);
-            A.swap_cols(k,j0);
-            if (!cond.is_empty()){
-                cond.swap_rows(k,i0);
-                cond.swap_cols(k,j0);
-            }
-            // update the error, i.e. make Gaussian elimination
-            auto rows=arma::span(k+1,A.n_rows-1);
-            auto cols=arma::span(k+1,A.n_cols-1);
-            if (k+1<A.n_rows && leftOrthogonal)
-                A(rows,k) *= 1.0/A(k,k);
-            else if (k+1<A.n_cols && !leftOrthogonal)
-                A(k, cols) *= 1.0/A(k,k);
-            if (k+1<npivot)
-                A(rows,cols) -= A(rows,k)*A(k,cols) ;
+        for(auto k=0u; k<npivot; k++)
+            add_pivot(A, k, reltol, max_error, cond);
+        estimate_error(A, cond);
+        readLU(A);
+    }
+
+    /// perform the decomposition in accumulative mode
+    void calculate(arma::Mat<T> A, double reltol, int rankMax, vector<int> I0, vector<int> J0, arma::Mat<unsigned int> cond = {})
+    {
+        npivot= std::min(A.n_rows, A.n_cols);
+        if (reltol==0) reltol=npivot*std::abs(std::numeric_limits<T>::epsilon());
+        double max_error=0;
+        if (rankMax>0 && rankMax<npivot) npivot=rankMax;
+
+        add_pivot(A, npivot-1, reltol, max_error, cond);
+        estimate_error(A, cond);
+        readLU(A);
+    }
+
+    void add_pivot(arma::Mat<T>& A, int k, double reltol, double max_error, arma::Mat<unsigned int>& cond)
+    {
+        auto p= (cond.is_empty()) ? arma::abs( A(arma::span(k,A.n_rows-1), arma::span(k,A.n_cols-1)) ).index_max()
+                                  : arma::abs( A(arma::span(k,A.n_rows-1), arma::span(k,A.n_cols-1)) % cond(arma::span(k,A.n_rows-1), arma::span(k,A.n_cols-1)) ).index_max();
+        auto i0=p%(A.n_rows-k)+k;      // was relative to the corner (k,k)
+        auto j0=p/(A.n_rows-k)+k;
+        if (!cond.is_empty())
+            if (cond(i0, j0) == 0) { npivot=k; return; };
+        if (double err=std::abs(A(i0,j0));
+            k>0 && err < reltol*max_error) { npivot=k; return; }
+        else max_error=std::max(max_error, err);
+        // move it to position k,k
+        std::swap(Iset[k],Iset[i0]);
+        std::swap(Jset[k],Jset[j0]);
+        A.swap_rows(k,i0);
+        A.swap_cols(k,j0);
+        if (!cond.is_empty()){
+            cond.swap_rows(k,i0);
+            cond.swap_cols(k,j0);
         }
+        // update the error, i.e. make Gaussian elimination
+        auto rows=arma::span(k+1,A.n_rows-1);
+        auto cols=arma::span(k+1,A.n_cols-1);
+        if (k+1<A.n_rows && leftOrthogonal)
+            A(rows,k) *= 1.0/A(k,k);
+        else if (k+1<A.n_cols && !leftOrthogonal)
+            A(k, cols) *= 1.0/A(k,k);
+        if (k+1<npivot)
+            A(rows,cols) -= A(rows,k)*A(k,cols) ;
+    }
+
+    void estimate_error(arma::Mat<T> A, arma::Mat<unsigned int> cond){
         if (npivot<std::min(A.n_rows, A.n_cols))
             error = (cond.is_empty()) ? arma::abs( A(arma::span(npivot,A.n_rows-1), arma::span(npivot,A.n_cols-1)) ).max()
                                       : arma::abs( A(arma::span(npivot,A.n_rows-1), arma::span(npivot,A.n_cols-1)) % cond(arma::span(npivot,A.n_rows-1), arma::span(npivot,A.n_cols-1))).max();
-        readLU(A);
     }
+
 
     vector<int> row_pivots() const { return {Iset.begin(), Iset.begin()+npivot}; }
     vector<int> col_pivots() const { return {Jset.begin(), Jset.begin()+npivot}; }
@@ -253,6 +276,7 @@ struct ARRLUParam {
     int bondDim=0;
     bool fullPiv=false;
     int nRookIter=3;
+    bool accumulate=false;
 };
 
 template<class T>
