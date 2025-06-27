@@ -44,14 +44,14 @@ TEST_CASE( "Test tensor CI 2" )
 
         auto [xi,wi]=grid::QuadratureGK15(0,1);
         size_t dim=5;
+        auto myTf=[&,xi=xi](vector<int> const& id) {
+            assert(id.size()==dim);
+            vector<double> xs;
+            for(auto i:id) xs.push_back(xi[i]);
+            return f(xs);
+        };
         SECTION( "discretized" )
         {
-            auto myTf=[&,xi=xi](vector<int> const& id) {
-                assert(id.size()==dim);
-                vector<double> xs;
-                for(auto i:id) xs.push_back(xi[i]);
-                return f(xs);
-            };
             auto ci=TensorCI2<cmpx>(myTf, vector<int>(dim,xi.size()), {.bondDim=120, .reltol=1e-10, .nRookIter=3, .useCachedFunction=true});
             while(!ci.isDone()) ci.iterate();
 
@@ -71,6 +71,24 @@ TEST_CASE( "Test tensor CI 2" )
                 for(auto i=0u; i<ci.tt.M.size(); i++)
                     REQUIRE(arma::norm(arma::vectorise(ci.tt.M[i]-tt2.M[i]))<1e-14);
             }
+        }
+        SECTION( "accumulate mode" )
+        {
+            auto ci=TensorCI2<cmpx>(myTf, vector<int>(dim,xi.size()), {.bondDim=1, .reltol=1e-10, .accumulate=true});
+            while(!ci.isDone()) ci.iterate();
+            for(auto i=0u; i<100; i++){
+                ci.iterate();
+                cout<<"cIter="<<ci.cIter<<", rank="<<ci.pivotError.size()<<", bondDim="<<ci.param.bondDim << ", nEval="<<ci.f.nEval()<<endl;
+
+            }
+            for(auto i=0u; i<ci.pivotError.size()-1; i+=10)
+                cout << i << " " << ci.pivotError[i] << endl;
+            for(auto i=0u; i<10; i++)
+                cout << ci.pivotError.size()-10+i << " " << ci.pivotError[ci.pivotError.size()-10+i] << endl;
+
+            vector<int> ids={3,5,1,5,1};
+            REQUIRE( abs(ci.tt.eval(ids)-myTf(ids))<1e-5 );
+            cout<<"integral="<<ci.tt.sum(vector(ci.len(),wi))<<endl;
         }
         SECTION( "directly" )
         {

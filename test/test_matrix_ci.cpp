@@ -167,7 +167,16 @@ TEST_CASE("rrlu")
             }
         }
     }
-
+    SECTION("big matrix") {
+        int n=100, rank=50;
+        mat A = arma::mat(n,rank,arma::fill::randn) * arma::mat(rank,n,arma::fill::randn); // mat is armadillo matrix
+        SECTION("horizontal matrix") {
+            for(auto isLeft:{0,1}) {
+                RRLUDecomp<double> sol(A,isLeft,tol);
+                //REQUIRE(arma::norm(A-sol.left()*sol.right())<tol);
+            }
+        }
+    }
     SECTION("from MPO") {
         mat A(4,7, fill::zeros);
         A.row(0).fill(1);
