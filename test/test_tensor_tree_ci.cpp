@@ -342,6 +342,31 @@ TEST_CASE( "tree overlap")
     REQUIRE(std::abs(ERR-ci.tt.norm2())<1e-5);
 }
 
+
+TEST_CASE( "bitset_error simple")
+{
+    // Test to show the bitset error by Julian Thoenniss
+    int dim = 3;
+    int nBit = 2;
+    double a = -1;
+    double b = 1;
+
+    auto tree = makeTuckerTree(dim, nBit);
+    auto grid = grid::Quantics(a, b, nBit, dim);
+
+    // Simple test function that triggers the TensorTreeCI bug
+    auto test_function = [&grid] (const vector<int>& sigma) -> std::complex<double> {
+        complex<double> result(0.0, 0.0);
+        for (auto coord : grid.id_to_coord(sigma)) {
+            auto z = complex<double>(coord, 5.0/3.0);
+            result += exp(-0.5 * z * z);
+        }
+        return result;
+    };
+
+    auto ci = TensorTreeCI<complex<double>>(test_function, tree, grid.tensorDims(), {.pivot1=grid.coord_to_id(vector(dim, 0.))});
+}
+
 TEST_CASE( "bitset_error")
 {
     // Test to show the bitset error by Julian Thoenniss
