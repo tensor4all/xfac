@@ -344,7 +344,7 @@ TEST_CASE( "tree overlap")
 
 TEST_CASE( "bitset_error")
 {
-    // Test to show the bitset error bug by Julian Thoenniss
+    // Test to show the bitset error by Julian Thoenniss
     cout << "=== Testing TensorTreeCI with unfused quantics ===" << endl;
     cout << "Demonstrating TensorTreeCI bug: generates non-binary indices for unfused quantics" << endl;
     cout << endl;
