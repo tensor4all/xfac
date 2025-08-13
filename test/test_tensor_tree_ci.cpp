@@ -341,3 +341,108 @@ TEST_CASE( "tree overlap")
     cout << "NORM2 = " << ERR << endl;
     REQUIRE(std::abs(ERR-ci.tt.norm2())<1e-5);
 }
+
+TEST_CASE( "bitset_error")
+{
+    // Test to show the bitset error bug by Julian Thoenniss
+    cout << "=== Testing TensorTreeCI with unfused quantics ===" << endl;
+    cout << "Demonstrating TensorTreeCI bug: generates non-binary indices for unfused quantics" << endl;
+    cout << endl;
+
+    int dim = 3;
+    int nBit = 8;
+    double a = -40;
+    double b = 40;
+
+    auto tree = makeTuckerTree(dim, nBit);
+    auto grid = grid::Quantics(a, b, nBit, dim);
+
+    // Global counter to track function calls
+    int function_call_count = 0;
+
+    // Simple test function that triggers the TensorTreeCI bug
+    auto test_function = [&function_call_count, &grid] (const vector<int>& sigma) -> std::complex<double> {
+        function_call_count++;
+
+        // *** BUG DETECTION: Check for invalid indices ***
+        bool has_invalid = std::any_of(sigma.begin(), sigma.end(), [](int val) { return val > 1; });
+
+        // Print some sample indices to see what we're getting
+        if (function_call_count <= 10 || function_call_count % 200 == 0) {
+            cout << "Call #" << function_call_count << ": sigma = [";
+            for (size_t i = 0; i < min(sigma.size(), size_t(10)); ++i) {
+                cout << sigma[i];
+                if (i < min(sigma.size() - 1, size_t(9))) cout << ", ";
+            }
+            if (sigma.size() > 10) cout << ", ...";
+            cout << "] (length=" << sigma.size() << ")";
+            if (has_invalid) cout << " *** HAS VALUES > 1 ***";
+            cout << endl;
+        }
+
+        if (has_invalid) {
+            cout << "*** BUG DETECTED (call #" << function_call_count << "): Non-binary index found in sigma = [";
+            for (size_t i = 0; i < min(sigma.size(), size_t(10)); ++i) {
+                cout << sigma[i];
+                if (i < min(sigma.size() - 1, size_t(9))) cout << ", ";
+            }
+            if (sigma.size() > 10) cout << ", ...";
+            cout << "] (length=" << sigma.size() << ")" << endl;
+
+            // Print which positions have values > 1
+            cout << "    Positions with values > 1: ";
+            int count = 0;
+            for (size_t i = 0; i < sigma.size() && count < 5; ++i) {
+                if (sigma[i] > 1) {
+                    cout << "pos=" << i << ":val=" << sigma[i] << " ";
+                    count++;
+                }
+            }
+            if (count >= 5) cout << "...";
+            cout << endl;
+        }
+
+        // Use xfac Quantics grid (unfused, domain [-40, 40])
+
+        // Convert quantics indices to coordinates using xfac grid
+        vector<double> coords = grid.id_to_coord(sigma);
+
+        // Create simple complex evaluation (abstract function)
+        vector<complex<double>> z(3);
+        for (int i = 0; i < 3; ++i) {
+            z[i] = complex<double>(coords[i], 5.0/3.0);  // Simple imaginary shift
+        }
+
+        // Simple abstract computation that returns a complex value
+        complex<double> result(0.0, 0.0);
+        for (int i = 0; i < 3; ++i) {
+            result += exp(-0.5 * z[i] * z[i]);  // Simple Gaussian-like function
+        }
+
+        return result;
+    };
+
+    // Reset function call counter
+    function_call_count = 0;
+
+    try {
+        // Create TensorTreeCI - this triggers the bug
+        auto ci = TensorTreeCI<complex<double>>(test_function, tree, grid.tensorDims(), {.pivot1=grid.coord_to_id(vector(dim, 0.))});
+
+        cout << "TensorTreeCI created. Function calls during construction: " << function_call_count << endl;
+
+        // Perform one iteration
+        cout << "Performing TCI iteration..." << endl;
+        int initial_calls = function_call_count;
+        ci.iterate(1);
+        cout << "Iteration completed. Additional function calls: " << (function_call_count - initial_calls) << endl;
+        cout << "Total function calls: " << function_call_count << endl;
+
+        cout << endl << "=== Test Summary ===" << endl;
+        cout << "If you see '*** BUG DETECTED' messages above, the bug has been reproduced!" << endl;
+        cout << "TensorTreeCI generates indices with values > 1 for unfused quantics" << endl;
+
+    } catch (const exception& e) {
+        cout << "Error: " << e.what() << endl;
+    }
+}
