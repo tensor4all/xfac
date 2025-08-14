@@ -195,8 +195,8 @@ protected:
                     for(const MultiIndex& xi:localSet[i].from_int())
                         for(const MultiIndex& xj:localSet[j].from_int()) {
                             MultiIndex mi {param.pivot1.begin(), param.pivot1.end()};
-                            add_inplace(mi,xi);
-                            add_inplace(mi,xj);
+                            mi[i]=xi[i];
+                            mi[j]=xj[j];
                             pivots.push_back({mi.begin(),mi.end()});
                         }
         return pivots;

@@ -8,6 +8,7 @@
 
 #include<iomanip>
 #include<bitset>
+#include <algorithm>
 
 namespace xfac {
 namespace grid {
@@ -100,6 +101,10 @@ struct Quantics {
     vector<double> id_to_coord(vector<int> const& id) const
     {
         assert(tensorLen==id.size());
+        #ifndef NDEBUG
+        if (std::any_of(id.begin(), id.end(), [](int x) { return x < 0 || x > 1;}))
+            throw std::invalid_argument("Quantics::id_to_coord(): bitvector contains invalid entries");
+        #endif
         vector<double> us(dim);
         for(auto i=0; i<dim; i++) {
             std::bitset<64> bi;
