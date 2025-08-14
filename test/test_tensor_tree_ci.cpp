@@ -370,9 +370,6 @@ TEST_CASE( "bitset_error simple")
 TEST_CASE( "bitset_error")
 {
     // Test to show the bitset error by Julian Thoenniss
-    cout << "=== Testing TensorTreeCI with unfused quantics ===" << endl;
-    cout << "Demonstrating TensorTreeCI bug: generates non-binary indices for unfused quantics" << endl;
-    cout << endl;
 
     int dim = 3;
     int nBit = 8;
@@ -390,20 +387,7 @@ TEST_CASE( "bitset_error")
         function_call_count++;
 
         // *** BUG DETECTION: Check for invalid indices ***
-        bool has_invalid = std::any_of(sigma.begin(), sigma.end(), [](int val) { return val > 1; });
-
-        // Print some sample indices to see what we're getting
-        if (function_call_count <= 10 || function_call_count % 200 == 0) {
-            cout << "Call #" << function_call_count << ": sigma = [";
-            for (size_t i = 0; i < min(sigma.size(), size_t(10)); ++i) {
-                cout << sigma[i];
-                if (i < min(sigma.size() - 1, size_t(9))) cout << ", ";
-            }
-            if (sigma.size() > 10) cout << ", ...";
-            cout << "] (length=" << sigma.size() << ")";
-            if (has_invalid) cout << " *** HAS VALUES > 1 ***";
-            cout << endl;
-        }
+        bool has_invalid = std::any_of(sigma.begin(), sigma.end(), [](int val) { return val > 1; });        
 
         if (has_invalid) {
             cout << "*** BUG DETECTED (call #" << function_call_count << "): Non-binary index found in sigma = [";
@@ -462,11 +446,6 @@ TEST_CASE( "bitset_error")
         ci.iterate(1);
         cout << "Iteration completed. Additional function calls: " << (function_call_count - initial_calls) << endl;
         cout << "Total function calls: " << function_call_count << endl;
-
-        cout << endl << "=== Test Summary ===" << endl;
-        cout << "If you see '*** BUG DETECTED' messages above, the bug has been reproduced!" << endl;
-        cout << "TensorTreeCI generates indices with values > 1 for unfused quantics" << endl;
-
     } catch (const exception& e) {
         cout << "Error: " << e.what() << endl;
     }
