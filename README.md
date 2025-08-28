@@ -74,7 +74,7 @@ If you want:
 
 * To compile the **tests**, add `-D XFAC_BUILD_TEST=ON` to  the cmake line above.
 
-* To generate the **python** library, add `-D XFAC_BUILD_PYTHON=ON`
+* To generate the **python** library, add `-D XFAC_BUILD_PYTHON=ON`. If you find any problem try with an older numpy `pip install "numpy<2.0"`.
 
 * To **install** the library in specific **local directory**, add `-D CMAKE_INSTALL_PREFIX=<my_local_install_directory>`
 
