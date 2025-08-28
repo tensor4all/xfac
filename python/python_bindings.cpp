@@ -24,11 +24,22 @@ using cmpx=complex<double>;
 
 template<typename T>
 void declare_TensorCI(py::module &m, std::string typestr) {
+
+    m.def(("decomposeCI"s+typestr).c_str(),[](arma::Mat<T> A,bool isleft,double reltol,int maxBondDim)
+    {
+        // A.print("A");
+        arma::Mat<T> a=A;//carma::arr_to_mat<T>(A);
+        // return;
+        auto ci=MatCURFixedTol<T> {reltol, maxBondDim};
+        auto [L,R]=ci(a,isleft);        
+        return std::make_pair(L,R);
+    }, "A"_a, "leftCanonic"_a=true, "reltol"_a=1e-12, "maxBondDim"_a=0);
+
     using TensorTraind=TensorTrain<T>;
     py::class_<TensorTraind>(m, ("TensorTrain"s+typestr).c_str())
             .def(py::init<size_t>(), "len"_a)
             .def_readonly("core",  &TensorTraind::M)
-            .def("setCoreAt",[](TensorTraind &tt, int i, py::array const& Mi){ tt.M.at(i)=carma::arr_to_cube<T>(Mi); }, "i"_a, "Mi"_a)
+            .def("setCoreAt",[](TensorTraind &tt, int i, arma::Cube<T> Mi){ tt.M.at(i)=Mi; }, "i"_a, "Mi"_a)
             .def("eval", &TensorTraind::eval)
             .def("sum", &TensorTraind::sum)
             .def("sum1", &TensorTraind::sum1)
