@@ -25,15 +25,11 @@ using cmpx=complex<double>;
 template<typename T>
 void declare_TensorCI(py::module &m, std::string typestr) {
 
-    m.def(("decomposeCI"s+typestr).c_str(),[](arma::Mat<T> A,bool isleft,double reltol,int maxBondDim)
+    m.def(("decomposeCI"s+typestr).c_str(),[](arma::Mat<T> A,bool isleft,double reltol,int maxBondDim,bool fast)
     {
-        // A.print("A");
-        arma::Mat<T> a=A;//carma::arr_to_mat<T>(A);
-        // return;
-        auto ci=MatCURFixedTol<T> {reltol, maxBondDim};
-        auto [L,R]=ci(a,isleft);        
-        return std::make_pair(L,R);
-    }, "A"_a, "leftCanonic"_a=true, "reltol"_a=1e-12, "maxBondDim"_a=0);
+        auto ci=CURDecomp<T>(A,isleft,reltol,maxBondDim,fast);
+        return std::make_pair(ci.left(),ci.right());
+    }, "A"_a, "leftCanonic"_a=true, "reltol"_a=1e-12, "maxBondDim"_a=0, "fast"_a=true);
 
     using TensorTraind=TensorTrain<T>;
     py::class_<TensorTraind>(m, ("TensorTrain"s+typestr).c_str())
