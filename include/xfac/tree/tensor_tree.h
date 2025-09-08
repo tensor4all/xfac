@@ -73,7 +73,7 @@ struct TensorTree {
             else if (neigh[to].size()==3){ // virtual node: 1st visit
                 // L(A,s,B,S)=L(a,b)*N(A,a,s)*M(B,b,S)
                 arma::Cube<T> LN=mat_cube(prod[from].st().eval(),tt.M[to], pos);  //LN(A,b,s)
-                prod[to]=cube_cube(LN,arma::conj(M[to]),pos);
+                prod[to]=cube_cube<T>(LN,arma::conj(M[to]),pos);
             }
             else if (neigh[to].size()==2){ // vitual node: 2nd visit
                 if (pos==0) {

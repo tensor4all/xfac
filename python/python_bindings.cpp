@@ -13,6 +13,9 @@
 #include "xfac/grid.h"
 #include "xfac/tensor/tensor_ci_2.h"
 #include "xfac/tensor/tensor_ci_converter.h"
+#include "xfac/tree/tree.h"
+#include "xfac/tree/tensor_tree.h"
+#include "xfac/tree/tensor_tree_ci.h"
 
 using namespace std;
 using namespace xfac;
@@ -40,6 +43,33 @@ void declare_TensorCI(py::module &m, std::string typestr) {
             .def("trueError",&TensorTraind::trueError, "f"_a, "max_n_eval"_a=1000000)
             .def("save", py::overload_cast<string>(&TensorTraind::save, py::const_))
             .def_static("load", py::overload_cast<string>(&TensorTraind::load))
+            ;
+
+    using TensorTreed=TensorTree<T>;
+    py::class_<TensorTreed>(m, ("TensorTree"s+typestr).c_str())
+            .def(py::init<>())
+            .def(py::init<TopologyTree>(), "tree"_a)
+            .def_readonly("M",  &TensorTreed::M)
+            .def("eval", &TensorTreed::eval)
+            .def("sum", &TensorTreed::sum)
+            .def("overlap", &TensorTreed::overlap, "tt"_a)
+            .def("norm2", &TensorTreed::norm2)
+            .def("compressSVD",&TensorTreed::compressSVD, "reltol"_a=1e-12, "maxBondDim"_a=0)
+            .def("compressLU",&TensorTreed::compressLU, "reltol"_a=1e-12, "maxBondDim"_a=0)
+            .def("compressCI",&TensorTreed::compressCI, "reltol"_a=1e-12, "maxBondDim"_a=0)
+            .def("save", py::overload_cast<string>(&TensorTreed::save, py::const_))
+            .def_static("load", py::overload_cast<string>(&TensorTreed::load))
+            ;
+
+    using TensorTreeCId=TensorTreeCI<T>;
+    py::class_<TensorTreeCId>(m, ("TensorTreeCI"s+typestr).c_str())
+            .def(py::init<function<T(vector<int>)>, TopologyTree, vector<int>, TensorCIParam>(), py::arg("f"), py::arg("tree"), py::arg("localDim"), py::arg("param")=TensorCIParam())
+            .def_readonly("tt",  &TensorTreeCId::tt)
+            .def_readonly("pivotError",  &TensorTreeCId::pivotError)
+            .def("len", &TensorTreeCId::len)
+            .def("iterate", &TensorTreeCId::iterate, "nIter"_a=1, "dmrg_type"_a=2)
+            .def("addPivotsAllBonds", &TensorTreeCId::addPivotsAllBonds)
+            .def("addPivotsAt", &TensorTreeCId::addPivotsAt)
             ;
 
     m.def("sum", xfac::operator+<T>,"tt1"_a, "tt2"_a);
@@ -160,7 +190,25 @@ PYBIND11_MODULE(xfacpy, m) {
     }, py::keep_alive<0, 1>()) /* Keep vector alive while iterator is used */
             ;
 
+    py::class_<TopologyTree>(m,"TopologyTree")
+            .def(py::init<>())
+            .def(py::init<int>(), "root"_a)
+            .def_readwrite("root",&TopologyTree::root)
+            .def_readwrite("nodes",&TopologyTree::nodes)
+            .def_readwrite("neigh",&TopologyTree::neigh)
+            .def("size", &TopologyTree::size)
+            .def("addEdge", &TopologyTree::addEdge)
+            .def("split", &TopologyTree::split)
+            .def("leaves", &TopologyTree::leaves)
+            .def("leavesToRoot",  static_cast<std::vector<std::pair<int,int>> (TopologyTree::*)() const>(&TopologyTree::leavesToRoot))
+            .def("leavesToRoot",  static_cast<std::vector<std::pair<int,int>> (TopologyTree::*)(int) const>(&TopologyTree::leavesToRoot), py::arg("root"))
+            .def("rootToLeaves",  static_cast<std::vector<std::pair<int,int>> (TopologyTree::*)() const>(&TopologyTree::rootToLeaves))
+            .def("rootToLeaves",  static_cast<std::vector<std::pair<int,int>> (TopologyTree::*)(int) const>(&TopologyTree::rootToLeaves), py::arg("root"))
+            .def("save", py::overload_cast<string>(&TopologyTree::save, py::const_))
+            .def_static("load", py::overload_cast<string>(&TopologyTree::load))
+            ;
 
+    m.def("makeTuckerTree",&makeTuckerTree,"dim"_a,"nBit"_a);
 
     py::class_<TensorCI1Param>(m,"TensorCI1Param")
             .def(py::init<>())
@@ -184,6 +232,18 @@ PYBIND11_MODULE(xfacpy, m) {
             .def_readwrite("weight",&TensorCI2Param::weight)
             .def_readwrite("cond",&TensorCI2Param::cond)
             .def_readwrite("useCachedFunction",&TensorCI2Param::useCachedFunction)
+            ;
+
+    py::class_<TensorCIParam>(m,"TensorCIParam")
+            .def(py::init<>())
+            .def_readwrite("bondDim",&TensorCIParam::bondDim)
+            .def_readwrite("reltol",&TensorCIParam::reltol)
+            .def_readwrite("pivot1",&TensorCIParam::pivot1)
+            .def_readwrite("fullPiv",&TensorCIParam::fullPiv)
+            .def_readwrite("nRookIter",&TensorCIParam::nRookIter)
+            .def_readwrite("weight",&TensorCIParam::weight)
+            .def_readwrite("cond",&TensorCIParam::cond)
+            .def_readwrite("useCachedFunction",&TensorCIParam::useCachedFunction)
             ;
 
     declare_TensorCI<double>(m,"");
