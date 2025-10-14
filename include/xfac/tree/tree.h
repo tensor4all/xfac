@@ -152,6 +152,11 @@ inline bool operator==(TopologyTree const& t1, TopologyTree const& t2)
         );
 }
 
+inline bool operator!=(TopologyTree const& t1, TopologyTree const& t2)
+{
+    return !(t1 == t2);
+}
+
 
 inline TopologyTree makeTuckerTree(int dim, int nBit){
     /// Return a Tucker tree.
