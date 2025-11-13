@@ -25,7 +25,17 @@ struct AdaptiveLU {
     arma::Mat<T> L, U;
     arma::Col<T> D;
 
+    AdaptiveLU() = default;
     AdaptiveLU(size_t n_rows_, size_t n_cols_): n_rows(n_rows_), n_cols(n_cols_){}
+    AdaptiveLU(arma::Mat<T> const& A)
+        : n_rows(A.n_rows)
+        , n_cols(A.n_cols)
+        , Iset (iota(A.n_rows))
+        , Jset (iota(A.n_cols))
+    {
+        arma::lu( L, U, A );
+        D = arma::Col<T>(n_rows, arma::fill::ones);
+    }
 
     size_t npivot() const { return D.size(); }
 
@@ -51,6 +61,20 @@ struct AdaptiveLU {
         D.resize(L.n_cols);
         D(k)=1.0/L(Iset[k],k);
     }
+
+    arma::Mat<T> left() const { return L*arma::diagmat(D); }
+    arma::Mat<T> right() const { return U; }
+    arma::Mat<T> mat() const { return left()*right(); }
+    vector<int> row_pivots() const { return {Iset.begin(), Iset.end()}; }
+    vector<int> col_pivots() const { return {Jset.begin(), Jset.end()}; }
+
+    //std::pair<int, int> find_pivot(arma::Mat<T> const& A, arma::Mat<unsigned int> const& cond) cons
+    //bool add_pivot(std::pair<int, int> pivot, arma::Mat<T>& A, int rankMax, double reltol, arma::Mat<unsigned int>& cond)
+    //void calculate(arma::Mat<T> A, double reltol, int rankMax, arma::Mat<unsigned int> cond = {})
+    //void estimate_error(arma::Mat<T> const& A, arma::Mat<unsigned int> const& cond){}
+    //vector<double> pivotErrors() const{}
+    //arma::Mat<T> PivotMatrixTri() const{}
+
 
     /// Increase the rows of the matrix according to C_,
     /// while reordering its old rows according to P: row i -> row P[i].

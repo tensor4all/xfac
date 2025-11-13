@@ -187,6 +187,50 @@ TEST_CASE("rrlu")
     }
 }
 
+
+TEST_CASE("AdaptiveLU direct")
+{
+    mat A(10,10,fill::randu);
+    A/=norm(A);
+    double tol=1e-12;
+
+    AdaptiveLU<double> sol(A);
+
+    REQUIRE(arma::norm(A-sol.left()*sol.right())<tol);
+
+}
+
+
+TEST_CASE("AdaptiveLU")
+{
+    mat A(100,120,fill::randu);
+    A/=norm(A);
+    double tol=1e-12;
+    uvec I,J;
+    while(I.size()< 0.2*A.n_rows) // random pivots
+    {
+        uint i=rand()%A.n_rows, j=rand()%A.n_cols;
+        double err=std::abs((A(i,j)-A.submat(uvec({i}),J) * A.submat(I,J).i() * A.submat(I,uvec({j})) ).eval()(0,0));
+        if (err>tol) {
+            I=join_cols(I,uvec({i}));
+            J=join_cols(J,uvec({j}));
+        }
+    }
+    arma::Mat<double> C=A.cols(J);
+    arma::Mat<double> R=A.rows(I);
+
+    AdaptiveLU<double> sol(C.n_rows, R.n_cols);
+
+    for(auto k=0u; k<I.size(); k++) {
+        sol.addPivotRow(I[k], R.row(k));
+        sol.addPivotCol(J[k], C.col(k));
+    }
+
+    arma::Mat<double> Across=sol.mat();
+    REQUIRE( norm(Across.rows(I)-A.rows(I))< tol );
+    REQUIRE( norm(Across.cols(J)-A.cols(J))< tol );
+}
+
 TEST_CASE("cur")
 {
     double tol=1e-12;
