@@ -178,6 +178,107 @@ TEST_CASE("rrlu")
     }
 }
 
+
+TEST_CASE("test setRows")
+{
+    arma::Cube<double> Acube(7, 3, 20, fill::randu);
+    auto A = cube_as_matrix2(Acube);  // Acube(i,j,k) -> A(ij,k)
+    //A/=norm(A);
+    double tol=1e-12;
+    uvec I,J;
+    while(I.size()< 5) // random pivots
+    {
+        uint i=rand()%A.n_rows, j=rand()%A.n_cols;
+        double err=std::abs((A(i,j)-A.submat(uvec({i}),J) * A.submat(I,J).i() * A.submat(I,uvec({j})) ).eval()(0,0));
+        if (err>tol) {
+            I=join_cols(I,uvec({i}));
+            J=join_cols(J,uvec({j}));
+        }
+    }
+
+    AdaptiveLU<double> sol(A.n_rows, A.n_cols);
+
+    arma::Mat<double> C=A.cols(J);
+    arma::Mat<double> R=A.rows(I);
+
+    for(auto k=0u; k<I.size(); k++){
+        sol.addPivotRow(I[k], R.row(k));
+        sol.addPivotCol(J[k], C.col(k));
+    }
+
+    arma::Mat<double> Across=sol.mat();
+    REQUIRE( norm(Across.rows(I)-A.rows(I))< tol );
+    REQUIRE( norm(Across.cols(J)-A.cols(J))< tol );
+
+    std::cout << "error after adding 5 pivots= " << arma::norm(sol.mat() - A) << std::endl;
+
+    // Create a new cube Bcube with n rows, the number of cols and slices should match Acube.
+    // Append Bcube after the last rows of Acube, such that the Acube increses the number of rows by n (number of rows of Bcube).
+    int n = 2;
+    arma::Cube<double> Bcube(n, Acube.n_cols, Acube.n_slices, arma::fill::randu);
+
+    auto A_orig = Acube;
+    Acube.insert_rows( Acube.n_rows, Bcube );
+
+    A = cube_as_matrix2(Acube);
+
+    // determine the position vector pos
+    std::vector<int> pos(A_orig.n_rows * A_orig.n_cols);
+    for (auto j = 0, iter = 0; j < A_orig.n_cols; j++){  // column major (fortran order)
+        for (auto i = 0; i < A_orig.n_rows; i++, iter++){
+            pos.at(iter) = i + j * (A_orig.n_rows + Bcube.n_rows);
+        }
+    }
+
+    // check that the position vector pos is correct
+    for (auto k = 0; k < A_orig.n_slices; k++){ // column major (fortran order)
+        for (auto j = 0, iter = 0; j < A_orig.n_cols; j++){
+            for (auto i = 0; i < A_orig.n_rows; i++, iter++){
+                //std::cout << "A_orig(i, j, k)= " << A_orig(i, j, k) << " A(pos.at(iter), k)=" << A(pos.at(iter), k) << ", i= " << i << ", j= " << j << ", k= " << k << ", pos= " << pos.at(iter) << std::endl;
+                REQUIRE( A_orig(i, j, k) ==  A(pos.at(iter), k) );
+            }
+        }
+    }
+
+    auto Bmat = cube_as_matrix2(Bcube);
+
+    sol.setRows(A, pos);  // all positions of the old rows in the new rows, len P = L, Pc size = C.n_rows
+
+    double error = arma::norm(sol.mat() - A);
+    std::cout << "error after calling setRow= " << error << std::endl;
+
+    {
+        auto npiv = I.size();
+        while(I.size()< npiv + 3) // add three more random pivots
+        {
+            uint i=rand()%A.n_rows, j=rand()%A.n_cols;
+            double err=std::abs((A(i,j)-A.submat(uvec({i}),J) * A.submat(I,J).i() * A.submat(I,uvec({j})) ).eval()(0,0));
+            if (err>tol) {
+                I=join_cols(I,uvec({i}));
+                J=join_cols(J,uvec({j}));
+            }
+        }
+
+        arma::Mat<double> C=A.cols(J);
+        arma::Mat<double> R=A.rows(I);
+
+        for(auto k=npiv; k<I.size(); k++){
+            sol.addPivotRow(I[k], R.row(k));
+            sol.addPivotCol(J[k], C.col(k));
+        }
+
+        std::cout << "error after 3 more pivots= " << arma::norm(sol.mat() - A) << std::endl;
+
+        //arma::Mat<double> Across=sol.mat();
+        //REQUIRE( norm(Across.rows(I)-A.rows(I))< tol );
+        //REQUIRE( norm(Across.cols(J)-A.cols(J))< tol );
+
+        double error2 = arma::norm(sol.mat() - A);
+        //REQUIRE( error2 <=  error );
+
+    }
+}
+
 TEST_CASE("cur")
 {
     double tol=1e-12;

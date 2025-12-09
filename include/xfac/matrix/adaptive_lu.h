@@ -92,6 +92,10 @@ struct AdaptiveLU {
         }
     }
 
+    arma::Mat<T> left() const { return L*arma::diagmat(D); }
+    arma::Mat<T> right() const { return U; }
+    arma::Mat<T> mat() const { return left()*right(); }
+
 };
 
 }
