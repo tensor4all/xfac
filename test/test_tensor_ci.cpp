@@ -11,7 +11,7 @@ using namespace xfac;
 using cmpx=std::complex<double>;
 
 
-TEST_CASE( "Test tensor CI" )
+TEST_CASE( "Test tensor CI", "[slow]" )
 {
     SECTION( "cos" )
     {

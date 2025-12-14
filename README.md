@@ -167,3 +167,17 @@ tutorial examples. The required Python packages to build the documentation in th
 ```
 pip3 install -r requirements.txt
 ```
+
+## Running tests
+
+Run all tests (except benchmarks) with from the command line with
+```
+$ ./build/test/xfac_test
+```
+where we assumed above that the test executable is located in directory `build/test`.
+As running all tests could take a while, one can switch off long running tests, which are explicitly tagged as "[slow]", by the command
+```
+$ ./build/test/xfac_test "~[slow]"
+```
+
+

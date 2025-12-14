@@ -120,7 +120,7 @@ TEST_CASE("global pivot")
 }
 
 
-TEST_CASE("quantics 1s orbital")
+TEST_CASE("quantics 1s orbital", "[slow]")
 {
     auto ft=[](double x, double y, double z){ return exp(-sqrt(x*x+y*y+z*z)); };
     auto fused=GENERATE(false,true);

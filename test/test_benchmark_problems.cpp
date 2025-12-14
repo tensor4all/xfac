@@ -11,7 +11,7 @@ using namespace xfac;
 using cmpx=std::complex<double>;
 
 
-TEST_CASE( "Test benchmark problems", "[.]" )
+TEST_CASE( "Test benchmark problems", "[.][slow]" )
 {
     SECTION( "exp-x integral")  // integral from the xfac paper in Fig. 8
     {

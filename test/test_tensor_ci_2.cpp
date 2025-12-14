@@ -13,7 +13,7 @@ using namespace xfac;
 using cmpx=std::complex<double>;
 
 
-TEST_CASE( "Test tensor CI 2" )
+TEST_CASE( "Test tensor CI 2", "[slow]" )
 {
     SECTION( "cos" )
     {
@@ -203,7 +203,11 @@ TEST_CASE("quantics 2")
             REQUIRE(std::abs(res_g - exact_g)<1e-7);
         }
     }
+}
 
+
+TEST_CASE("quantics 2 erroneous", "[slow]")  // TODO: Isolate non-running testcases, to be fixed!
+{
     SECTION("FP")
     {
         int dim=12;
