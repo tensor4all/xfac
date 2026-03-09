@@ -24,6 +24,7 @@ if (XFAC_BUILD_TEST)
 endif()
 
 if (XFAC_BUILD_PYTHON)
+    set(PYBIND11_FINDPYTHON ON)
     add_subdirectory(extern/pybind11)
     add_subdirectory(extern/carma)
 endif()
