@@ -29,6 +29,14 @@ public:
         neigh[to].push_back(from);
     }
 
+    std::map<int,std::vector<int>> get_neigh_list() const
+    {
+        std::map<int,std::vector<int>> output;
+        for(auto& [node,neigh] : neigh)
+            output.emplace(node, neigh.from_int());
+        return output;
+    }
+
     /// split tree at connecting edge between node0 and node1 and return the physical nodes (which are not in nodes) of the two subtrees
     std::pair<std::set<int>, std::set<int>> split(int node0, int node1) const
     {

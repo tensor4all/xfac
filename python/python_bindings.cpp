@@ -195,7 +195,7 @@ PYBIND11_MODULE(xfacpy, m) {
             .def(py::init<int>(), "root"_a)
             .def_readwrite("root",&TopologyTree::root)
             .def_readwrite("nodes",&TopologyTree::nodes)
-            .def_readwrite("neigh",&TopologyTree::neigh)
+            .def("neigh",&TopologyTree::get_neigh_list)
             .def("size", &TopologyTree::size)
             .def("addEdge", &TopologyTree::addEdge)
             .def("split", &TopologyTree::split)
