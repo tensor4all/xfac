@@ -29,6 +29,12 @@ public:
         neigh[to].push_back(from);
     }
 
+    void add_phys_node(int n)
+    {
+        if (neigh.find(n)==neigh.end()) throw std::invalid_argument("Tree::add_phys_node the node is not in node list");
+        nodes.insert(n);
+    }
+
     std::vector<int> get_phys_node_list() const { return vector(nodes.begin(),nodes.end()); }
 
     std::vector<int> get_node_list() const

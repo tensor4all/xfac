@@ -196,6 +196,7 @@ PYBIND11_MODULE(xfacpy, m) {
             .def_readwrite("root",&TopologyTree::root)
             .def("get_node_list",&TopologyTree::get_node_list)
             .def("get_phys_node_list",&TopologyTree::get_phys_node_list)
+            .def("add_phys_node",&TopologyTree::add_phys_node, "n"_a)
             .def("get_neigh_list",&TopologyTree::get_neigh_list)
             .def("size", &TopologyTree::size)
             .def("addEdge", &TopologyTree::addEdge)
