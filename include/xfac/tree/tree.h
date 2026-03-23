@@ -29,6 +29,16 @@ public:
         neigh[to].push_back(from);
     }
 
+    std::vector<int> get_phys_node_list() const { return vector(nodes.begin(),nodes.end()); }
+
+    std::vector<int> get_node_list() const
+    {
+        std::vector<int> output;
+        for(auto& [node,neigh] : neigh)
+            output.push_back(node);
+        return output;
+    }
+
     std::map<int,std::vector<int>> get_neigh_list() const
     {
         std::map<int,std::vector<int>> output;
