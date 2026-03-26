@@ -2,6 +2,7 @@ add_executable(${PROJECT_NAME}_test
     test_main.cpp
     test_matrix_ci.cpp
     test_matrix_ci_2.cpp
+    test_SVDDecomp.cpp
     test_tensor_ci.cpp
     test_tensor_ci_2.cpp
     test_timing.cpp
