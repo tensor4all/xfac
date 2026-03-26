@@ -79,6 +79,7 @@ private:
     {
         double tol2=reltol*reltol;
         double norm2=pow(arma::norm(s,2),2);
+        if (norm2==0) return 1;  // corner case
         double sum=0;
         int n=s.size();
         for(int i=s.size()-1; i>=0; i--) {
