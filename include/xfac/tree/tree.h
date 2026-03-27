@@ -6,6 +6,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <queue>
 #include <stdexcept>
 #include <cassert>
 
