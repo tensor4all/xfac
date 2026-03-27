@@ -208,6 +208,11 @@ PYBIND11_MODULE(xfacpy, m) {
             .def("rootToLeaves",  static_cast<std::vector<std::pair<int,int>> (TopologyTree::*)(int) const>(&TopologyTree::rootToLeaves), py::arg("root"))
             .def("save", py::overload_cast<string>(&TopologyTree::save, py::const_))
             .def_static("load", py::overload_cast<string>(&TopologyTree::load))
+            .def("is_connected", &TopologyTree::isConnected)
+            .def("is_tree", &TopologyTree::isTree)
+            .def("has_consecutive_nodes_from_zero", &TopologyTree::hasConsecutiveNodesFromZero)
+            .def("has_small_physical_nodes", &TopologyTree::hasSmallPhysicalNodes)
+            .def("validate", &TopologyTree::validate)
             ;
 
     m.def("makeTuckerTree",&makeTuckerTree,"dim"_a,"nBit"_a);

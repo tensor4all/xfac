@@ -40,6 +40,7 @@ struct TensorTreeCI {
 
 
     /// constructs a rank-1 TensorCI2 from a function f:(a1,a2,...,an)->eT  where the index ai is in [0,localDim[i]).
+    /// Validates the tree topology before any allocation: throws std::invalid_argument if malformed.
     TensorTreeCI(function<T(vector<int>)> const& f_, TopologyTree tree_, vector<int> localDim, TensorCIParam param_={})
         : tree(tree_)
         , f {f_, param_.useCachedFunction, false}
@@ -48,6 +49,7 @@ struct TensorTreeCI {
         , localSet {localDim.size()}
         , tt {tree}
     {
+        tree_.validate(); // throws std::invalid_argument if tree is disconnected, cyclic, or has wrong index layout
         if (localDim.size() != tree.nodes.size()) throw std::invalid_argument("tree and localDim are incompatible");
         if (param.pivot1.empty())
             param.pivot1.resize(localDim.size(), 0);
