@@ -139,6 +139,7 @@ struct TensorTreeCI {
         P[{from, to}] = ci.PivotMatrixTri();
         tt.M.at(from) = get_TP1(from,to);
         tt.M.at(to)=get_T3(to);
+        collectPivotError(from, to, ci.pivotErrors());
     }
 
     /// update the pivots on bond from node *from* to node *to* using the Pi matrix.
