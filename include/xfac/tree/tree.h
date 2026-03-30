@@ -6,6 +6,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <queue>
 #include <stdexcept>
 #include <cassert>
 
@@ -27,6 +28,30 @@ public:
         if (from==to) throw std::invalid_argument("Tree::addEdge wrong node indices");
         neigh[from].push_back(to);
         neigh[to].push_back(from);
+    }
+
+    void add_phys_node(int n)
+    {
+        if (neigh.find(n)==neigh.end()) throw std::invalid_argument("Tree::add_phys_node the node is not in node list");
+        nodes.insert(n);
+    }
+
+    std::vector<int> get_phys_node_list() const { return vector(nodes.begin(),nodes.end()); }
+
+    std::vector<int> get_node_list() const
+    {
+        std::vector<int> output;
+        for(auto& [node,neigh] : neigh)
+            output.push_back(node);
+        return output;
+    }
+
+    std::map<int,std::vector<int>> get_neigh_list() const
+    {
+        std::map<int,std::vector<int>> output;
+        for(auto& [node,neigh] : neigh)
+            output.emplace(node, neigh.from_int());
+        return output;
     }
 
     /// split tree at connecting edge between node0 and node1 and return the physical nodes (which are not in nodes) of the two subtrees
@@ -79,6 +104,117 @@ public:
         std::vector<std::pair<int,int>> out;
         leaves_to_root(out,root);
         return out;
+    }
+
+    // -----------------------------------------------------------------------
+    // Validation
+    // -----------------------------------------------------------------------
+
+    /** True if the graph is connected (every node is reachable from root). */
+    bool isConnected() const
+    {
+        if (neigh.empty()) return true;
+        std::set<int> visited;
+        std::queue<int> q;
+        // Use the first node in neigh as the starting point (handles arbitrary root values)
+        int start = neigh.begin()->first;
+        q.push(start);
+        visited.insert(start);
+        while (!q.empty()) {
+            int cur = q.front(); q.pop();
+            for (int nb : neigh.at(cur).from_int())
+                if (!visited.count(nb)) { visited.insert(nb); q.push(nb); }
+        }
+        return visited.size() == neigh.size();
+    }
+
+    /**
+     * True if the graph contains no cycle.
+     *
+     * A tree on N nodes has exactly N-1 edges. Any extra edge introduces a
+     * cycle. We detect this with a BFS that counts visited nodes: if we ever
+     * try to visit a node that is already in the visited set (and it is not
+     * the parent we came from), a cycle exists.
+     */
+    bool isTree() const
+    {
+        if (neigh.empty()) return true;
+        std::map<int,int> parent;   // node -> parent (-1 for start)
+        std::set<int> visited;
+        std::queue<int> q;
+        int start = neigh.begin()->first;
+        parent[start] = -1;
+        q.push(start);
+        visited.insert(start);
+        while (!q.empty()) {
+            int cur = q.front(); q.pop();
+            for (int nb : neigh.at(cur).from_int()) {
+                if (!visited.count(nb)) {
+                    visited.insert(nb);
+                    parent[nb] = cur;
+                    q.push(nb);
+                } else if (nb != parent[cur]) {
+                    return false;  // back-edge found: cycle
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * True if node indices are {0, 1, 2, ..., N-1} in the order returned by
+     * get_node_list() (which iterates the std::map in key order, i.e. sorted).
+     */
+    bool hasConsecutiveNodesFromZero() const
+    {
+        auto node_list = get_node_list();
+        for (int i = 0; i < static_cast<int>(node_list.size()); ++i)
+            if (node_list[i] != i) return false;
+        return true;
+    }
+
+    /**
+     * True if physical nodes occupy the first indices in the node list, i.e.
+     * get_phys_node_list()[i] == get_node_list()[i] for every physical index i.
+     */
+    bool hasSmallPhysicalNodes() const
+    {
+        auto node_list  = get_node_list();
+        auto phys_nodes = get_phys_node_list();
+        for (int i = 0; i < static_cast<int>(phys_nodes.size()); ++i)
+            if (phys_nodes[i] != node_list[i]) return false;
+        return true;
+    }
+
+    /**
+     * Validate all structural invariants.
+     * Throws std::invalid_argument with a descriptive message on the first
+     * failing check. Returns true if all checks pass.
+     */
+    bool validate() const
+    {
+        if (!isConnected())
+            throw std::invalid_argument(
+                "TopologyTree::validate: tree must be connected. "
+                "Use get_neigh_list() to inspect the adjacency structure.");
+
+        if (!isTree())
+            throw std::invalid_argument(
+                "TopologyTree::validate: tree must be acyclic (no cycles allowed). "
+                "A cycle was detected during BFS traversal.");
+
+        if (!hasConsecutiveNodesFromZero())
+            throw std::invalid_argument(
+                "TopologyTree::validate: node indices must be consecutive starting from 0. "
+                "Use get_node_list() to inspect current indices.");
+
+        if (!hasSmallPhysicalNodes())
+            throw std::invalid_argument(
+                "TopologyTree::validate: physical nodes must occupy the first indices "
+                "(indices 0..nPhys-1). Use get_node_list() and get_phys_node_list() "
+                "to inspect current layout.");
+
+        return true;
     }
 
     void save(std::ostream &out) const
