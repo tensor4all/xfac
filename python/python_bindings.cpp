@@ -211,7 +211,7 @@ PYBIND11_MODULE(xfacpy, m) {
             .def("is_connected", &TopologyTree::isConnected)
             .def("is_tree", &TopologyTree::isTree)
             .def("has_consecutive_nodes_from_zero", &TopologyTree::hasConsecutiveNodesFromZero)
-            .def("has_small_physical_nodes", &TopologyTree::hasSmallPhysicalNodes)
+            .def("are_physical_nodes_first", &TopologyTree::arePhysicalNodesFirst)
             .def("validate", &TopologyTree::validate)
             ;
 

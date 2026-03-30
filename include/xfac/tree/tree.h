@@ -177,7 +177,7 @@ public:
      * True if physical nodes occupy the first indices in the node list, i.e.
      * get_phys_node_list()[i] == get_node_list()[i] for every physical index i.
      */
-    bool hasSmallPhysicalNodes() const
+    bool arePhysicalNodesFirst() const
     {
         auto node_list  = get_node_list();
         auto phys_nodes = get_phys_node_list();
@@ -208,7 +208,7 @@ public:
                 "TopologyTree::validate: node indices must be consecutive starting from 0. "
                 "Use get_node_list() to inspect current indices.");
 
-        if (!hasSmallPhysicalNodes())
+        if (!arePhysicalNodesFirst())
             throw std::invalid_argument(
                 "TopologyTree::validate: physical nodes must occupy the first indices "
                 "(indices 0..nPhys-1). Use get_node_list() and get_phys_node_list() "
