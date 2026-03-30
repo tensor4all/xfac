@@ -224,7 +224,7 @@ public:
         for (const auto& n:nodes) out<<" "<<n;
         out<<std::endl;
         out<<neigh.size()<<std::endl;
-        for(auto [node,nSet]:neigh) {
+        for(auto& [node,nSet]:neigh) {
             out<<" "<<node<<" "<<nSet.size();
             for(auto n2:nSet.from_int())
                 out<<" "<<n2;
