@@ -198,6 +198,8 @@ PYBIND11_MODULE(xfacpy, m) {
             .def("get_phys_node_list",&TopologyTree::get_phys_node_list)
             .def("add_phys_node",&TopologyTree::add_phys_node, "n"_a)
             .def("get_neigh_list",&TopologyTree::get_neigh_list)
+            .def_readwrite("nodes",&TopologyTree::nodes)
+            .def_readwrite("neigh",&TopologyTree::neigh)
             .def("size", &TopologyTree::size)
             .def("addEdge", &TopologyTree::addEdge)
             .def("split", &TopologyTree::split)
@@ -265,6 +267,7 @@ PYBIND11_MODULE(xfacpy, m) {
             .def_readonly("deltaVolume",&Quantics::deltaVolume)
             .def_readonly("tensorLen",&Quantics::tensorLen)
             .def_readonly("tensorLocDim",&Quantics::tensorLocDim)
+            .def("tensorDims", &Quantics::tensorDims)
             .def("coord_to_id", &Quantics::coord_to_id)
             .def("id_to_coord", &Quantics::id_to_coord)
             ;
