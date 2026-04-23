@@ -103,4 +103,24 @@ TEST_CASE( "Test tree" )
         REQUIRE(s1 == std::set({2, 3, 6, 7}));
     }
 
+    SECTION( "split tree" )
+    {
+        tree = makeTuckerTree(4, 2);
+        auto [t0, t1] = tree.splitTree(6, 9);
+
+        // test t0
+        REQUIRE(t0.neigh.at(2).from_int() == tree.neigh.at(2).from_int());
+        REQUIRE(t0.neigh.at(6).from_int() == std::vector{2});
+        REQUIRE(t0.nodes == std::set<int>{2, 6});
+        REQUIRE(t0.root == 6);
+
+        // test t1
+        for (auto i: {0, 1, 3, 4, 5, 7, 8}){
+            REQUIRE(t1.neigh.at(i).from_int() == tree.neigh.at(i).from_int());
+        }
+        REQUIRE(t1.neigh.at(9).from_int() == std::vector{-1, 7, 8});
+        REQUIRE(t1.nodes == std::set<int>{0, 1, 3, 4, 5, 7});
+        REQUIRE(t1.root == tree.root);
+    }
+
 }

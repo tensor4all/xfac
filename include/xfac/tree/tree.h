@@ -54,11 +54,13 @@ public:
         return output;
     }
 
-    /// split tree at connecting edge between node0 and node1 and return the physical nodes (which are not in nodes) of the two subtrees
-    std::pair<std::set<int>, std::set<int>> split(int node0, int node1) const
+    /// split tree at the connecting edge between node0 and node1 and return the nodes of the two subtrees
+    /// by default, only the physical nodes (which are not in nodes) are returned
+    std::pair<std::set<int>, std::set<int>> split(int node0, int node1, bool physical_only=true) const
     {
         if (!(neigh.at(node0).to_int().find(node1) != neigh.at(node0).to_int().end()))
             throw std::invalid_argument("Tree::split node0 and node1 are not neighbors");
+        if (node0 == node1) throw std::invalid_argument("Tree::split: wrong node indices");
         std::set<int> s0, s1;
         s0.insert(node0);
         s1.insert(node1);
@@ -68,12 +70,54 @@ public:
             if (s1.contains(from) && to != node0) s1.insert(to);
             if (s1.contains(to) && from != node0) s1.insert(from);
         };
-        // Take the intersection between s0 and resp. s1
-        // and the set of phyiscal nodes, to remove the artificial nodes
-        std::set<int> s0p, s1p;
-        std::set_intersection(s0.begin(), s0.end(), nodes.begin(), nodes.end(), std::inserter(s0p, s0p.begin()));
-        std::set_intersection(s1.begin(), s1.end(), nodes.begin(), nodes.end(), std::inserter(s1p, s1p.begin()));
-        return std::make_pair(s0p, s1p);
+        if (physical_only){
+            // Take the intersection between s0 and resp. s1
+            // and the set of phyiscal nodes, to remove the artificial nodes
+            std::set<int> s0p, s1p;
+            std::set_intersection(s0.begin(), s0.end(), nodes.begin(), nodes.end(), std::inserter(s0p, s0p.begin()));
+            std::set_intersection(s1.begin(), s1.end(), nodes.begin(), nodes.end(), std::inserter(s1p, s1p.begin()));
+            return std::make_pair(s0p, s1p);
+        }
+        return std::make_pair(s0, s1);
+    }
+
+    /// split tree at the connecting edge between node *from* and node *to* and return the two resulting subtrees
+    std::pair<TopologyTree, TopologyTree> splitTree(int from, int to) const {
+        TopologyTree t0, t1;
+        auto [s0, s1] = split(from, to, false);
+        for (auto node : s0) {
+            if (nodes.find(node) != nodes.end()) t0.nodes.insert(node);
+            t0.neigh.insert({node, neigh.at(node)});
+        };
+        for (auto node : s1) {
+            if (nodes.find(node) != nodes.end()) t1.nodes.insert(node);
+            t1.neigh.insert({node, neigh.at(node)});
+        };
+        // attribute the original root node to either t0 or t1 such that it has the same place as before.
+        // for the other tree use either the *from* or the *to* node as root.
+        if (s0.find(root) != s0.end()){
+            t0.root = root;
+        } else {
+            t0.root = from;
+        }
+        if (s1.find(root) != s1.end()){
+            t1.root = root;
+        } else {
+            t1.root = to;
+        }
+        // remove the *from* and *to* node from the trees.
+        // if dangling elements and reordering might happen, replace the former nodes *from* and *two* by a special value *dummy_node*
+        if (t0.neigh.at(from).pos(to) != t0.neigh.at(from).size() - 1){
+            t0.neigh.at(from).replace(to, dummy_node);
+        } else {
+            t0.neigh.at(from).remove(to);
+        }
+        if (t1.neigh.at(to).pos(from) != t1.neigh.at(to).size() - 1){
+            t1.neigh.at(to).replace(from, dummy_node);
+        } else {
+            t1.neigh.at(to).remove(from);
+        }
+        return std::make_pair(t0, t1);
     }
 
     vector<int> leaves() const
@@ -277,6 +321,7 @@ private:
             if (n!=parent) leaves_to_root(path, n, nodeid);
         if (parent!=-1) path.push_back({nodeid,parent});
     }
+    static constexpr int dummy_node = -1; // special value used internally, do not attribute a node to this value
 };
 
 inline bool operator==(TopologyTree const& t1, TopologyTree const& t2)

@@ -18,6 +18,17 @@ using std::function;
 using std::array;
 
 
+/// evaluate an mps in tensor train format at a given multi index
+template<class T>
+T mps_eval(vector<int> const& id, vector<arma::Cube<T>> const& M)
+{
+    if (id.size()!=M.size()) throw std::invalid_argument("mps_eval::() id.size()!=size()");
+    arma::Mat<T> prod(1,1,arma::fill::eye);
+    for(auto k=0u; k<M.size(); k++)
+        prod=prod* arma::Mat<T>{ M[k].col(id[k]) };
+    return prod.eval()(0,0);
+}
+
 /// stores a tensor train, i.e., a list of cubes.
 template<class T>
 struct TensorTrain {
@@ -27,17 +38,10 @@ struct TensorTrain {
     TensorTrain(size_t len) : M(len) {}
 
     /// evaluate the tensor train at a given multi index.
-    T eval(vector<int> const& id) const
-    {
-        if (id.size()!=M.size()) throw std::invalid_argument("TensorTrain::() id.size()!=size()");
-        arma::Mat<T> prod(1,1,arma::fill::eye);
-        for(auto k=0u; k<M.size(); k++)
-            prod=prod* arma::Mat<T>{ M[k].col(id[k]) };
-        return prod.eval()(0,0);
-    }
+    T eval(vector<int> const& id) const { return mps_eval(id, M);}
 
     /// evaluate the tensor train at a given multi index. Same as eval()
-    T operator()(vector<int> const& id) const { return eval(id); }
+    T operator()(vector<int> const& id) const { return mps_eval(id, M); }
 
     /// compute the weighted sum of the tensor train
     T sum(const vector<vector<double>>& weight) const;

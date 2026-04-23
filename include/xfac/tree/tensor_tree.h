@@ -17,28 +17,124 @@ using std::vector;
 using std::function;
 using std::array;
 
+/// compress the bond between site *from* and site *to* in a tree of 3-leg tensors
+template<class T>
+void compress_bond(vector<arma::Cube<T>>& M, int from, int to, TopologyTree const& tree, function<array<arma::Mat<T>,2>(arma::Mat<T>,bool)> mat_decomp)
+{
+    auto ab = mat_decomp(cubeToMat_R(M.at(from), tree.neigh.at(from).pos(to)), true);
+    arma::Mat<T> &M1=ab[0];
+    arma::Mat<T> M2= ab[1] * cubeToMat_L(M.at(to), tree.neigh.at(to).pos(from));
+
+    vector<unsigned long int> shape_f{M.at(from).n_rows, M.at(from).n_cols, M.at(from).n_slices};
+    shape_f.at(tree.neigh.at(from).pos(to)) = M1.n_cols;
+    M.at(from) = matToCube_R(M1, shape_f, tree.neigh.at(from).pos(to));
+
+    vector<unsigned long int> shape_t{M.at(to).n_rows, M.at(to).n_cols, M.at(to).n_slices};
+    shape_t.at(tree.neigh.at(to).pos(from)) = M2.n_rows;
+    M.at(to) = matToCube_L(M2, shape_t, tree.neigh.at(to).pos(from));
+}
+
+/// evaluate the tree mps over a given path
+template<class T>
+T mps_eval(vector<int> const& id, vector<arma::Cube<T>> const& M, TopologyTree const& tree, std::vector<std::pair<int,int>> const& path, std::set<int> const& nodes)
+{
+    // low-level routine which allows to evaluate the MPS over the full, but also over a subpart of the tree.
+    // due to artificial sites, the number of *nodes* might be smaller than number of different sites in *path*
+    // however, the all physical nodes in *path* must be contained inside the *nodes* set
+    // and *id* must have the same size as all physical sites of the MPS *M*.
+    // if the MPS is evaluated over the full tree size(id) == size(nodes) holds, whereas in case of subpaths over the MPS tree size(id) > size(nodes).
+    auto prod=M; // a copy
+    for(auto k:nodes)
+        prod[k]=cube_eval(M.at(k),id.at(k));
+    for(auto [from,to]:path) {
+        arma::Col<T> v=arma::vectorise(prod.at(from));
+        int pos=tree.neigh.at(to).pos(from);
+        prod.at(to)=cube_vec(prod.at(to),v,pos);
+    }
+    auto root = std::get<1>(path.back());
+    return arma::conv_to<arma::Col<T>>::from(arma::vectorise(prod.at(root)))(0);
+}
+
+/// evaluate the overlap of two tree mps
+template<class T>
+T mps_overlap(vector<arma::Cube<T>> const& M, TopologyTree const& tree, vector<arma::Cube<T>> const& M1, TopologyTree const& tree1)
+{
+    if (M.empty() || M1.empty()) return 0;
+    if (tree != tree1) throw std::invalid_argument("mps_overlap(): trees different");
+    auto prod = vector<arma::Mat<T>> (M.size());
+    for(auto p:tree.leaves()) {// initialize the leaves: L(A,B) = tt.M(A,a,s) * M(B,a,s)
+        int pos=tree.neigh.at(p).to_int().begin()->second;
+        auto Mc=cube_swap_indices(M[p],0,pos);
+        auto Nc=cube_swap_indices(M1[p],0,pos);
+        prod[p]=cube_as_matrix1(Nc) * cube_as_matrix1(Mc).t();
+    }
+
+    auto neigh=tree.neigh;
+    for(auto [from,to]:tree.leavesToRoot()) {
+        int pos=neigh.at(to).pos(from);
+        if (tree.nodes.contains(to)) { // physical node: like mps
+            auto Mc=cube_swap_indices(M[to],1,pos);
+            auto Nc=cube_swap_indices(M1[to],1,pos);
+            // L(A,B)=L(a,b)*Nc(A,a,s)*Mc(B,b,s)
+            arma::Cube<T> LN=mat_cube(prod[from].st().eval(),Nc,1);
+            prod[to]=cube_as_matrix1(LN) * cube_as_matrix1(Mc).t();
+        }
+        else if (neigh[to].size()==3){ // virtual node: 1st visit
+            // L(A,s,B,S)=L(a,b)*N(A,a,s)*M(B,b,S)
+            arma::Cube<T> LN=mat_cube(prod[from].st().eval(),M1[to], pos);  //LN(A,b,s)
+            prod[to]=cube_cube<T>(LN,arma::conj(M[to]),pos);
+        }
+        else if (neigh[to].size()==2){ // vitual node: 2nd visit
+            if (pos==0) {
+                // L(s,S)=Lf(a,b)*Lt(a,s,b,S)
+                auto nS=prod[to].n_cols/prod[from].n_cols;
+                auto ns=prod[to].n_rows/prod[from].n_rows;
+                arma::Cube<T> Lt(prod[to].memptr(), prod[to].n_rows, prod[from].n_cols, nS); // Lt(as,b,S)
+                Lt=cube_swap_indices(Lt,0,1); // Lt(b,as,S)
+                arma::Mat<T> Ltm(Lt.memptr(), Lt.n_rows*prod[from].n_rows, ns*nS); // Lt(ba,sS)
+                arma::Mat<T> Lf=arma::reshape(prod[from].st(),1,prod[from].size());
+                prod[to]=arma::reshape(Lf*Ltm, ns,nS);
+            }
+            else {
+                // L(s,S)=Lf(a,b)*Lt(sa,Sb)
+                auto nS=prod[to].n_cols/prod[from].n_cols;
+                auto ns=prod[to].n_rows/prod[from].n_rows;
+                arma::Cube<T> Lt(prod[to].memptr(), prod[to].n_rows,  nS, prod[from].n_cols); // Lt(sa,S,b)
+                Lt=cube_swap_indices(Lt,0,1); // Lt(S,sa,b)
+                arma::Mat<T> Ltm(Lt.memptr(), ns*nS, prod[from].size()); // Lt(Ss,ab)
+                arma::Mat<T> Lf=arma::reshape(prod[from],1,prod[from].size());
+                prod[to]=arma::reshape(Lf*Ltm.st(), ns,nS).st();
+            }
+        }
+        else if (neigh[to].size()==1) { // virtual node: root
+            // L=L(a,b)*L(a,b)
+            T value=arma::dot(prod[from],prod[to]);
+            prod[to]=arma::Mat<T>(1,1, arma::fill::value(value));
+        }
+        else throw std::runtime_error("mps_overlap(): unexpected number of neighbors");
+
+        neigh[to].remove(from);
+        prod[from].clear();
+    }
+    return prod[tree.root](0,0);
+}
+
+
+
 /// A class to store a tensor tree and to evaluate it.
 template<class T>
 struct TensorTree {
-    TopologyTree tree;       ///< a tree that stores which nodes have physical leg
-    vector< arma::Cube<T> >  M;   ///< list of 3-leg tensors
+    TopologyTree tree;         ///< a tree that stores which nodes have physical leg
+    vector< arma::Cube<T> > M; ///< list of 3-leg tensors
 
     TensorTree()=default;
     TensorTree(TopologyTree const& tree_) : tree(tree_), M(tree_.size()) {}
 
-    /// evaluate the tensor tree at a given multi index.
-    T eval(vector<int> const& id) const
-    {
-        if (id.size()!=tree.nodes.size()) throw std::invalid_argument("TensorTree::() id.size()!=tree.nodes.size()");
-        auto prod=M; // a copy
-        for(auto k:tree.nodes)
-            prod[k]=cube_eval(M[k],id[k]);
-        for(auto [from,to]:tree.leavesToRoot()) {
-            arma::Col<T> v=arma::vectorise(prod[from]);
-            int pos=tree.neigh.at(to).pos(from);
-            prod[to]=cube_vec(prod[to],v,pos);
-        }
-        return arma::conv_to<arma::Col<T>>::from(arma::vectorise(prod[tree.root]))(0);
+    /// evaluate the full tensor tree at a given multi index.
+    T eval(vector<int> const& id) const {
+        // size(id) == size(nodes) holds as we evaluate the MPS on the full tree
+        if (id.size()!=tree.nodes.size()) throw std::invalid_argument("TensorTree.eval() id.size()!=tree.nodes.size()");
+        return mps_eval(id, M, tree, tree.leavesToRoot(), tree.nodes);
     }
 
     /// evaluate the tensor tree at a given multi index. Same as eval()
@@ -48,89 +144,13 @@ struct TensorTree {
     T sum() const;
 
     /// compute the overlap with another tensor tree <this|tt>
-    T overlap(const TensorTree<T>& tt) const
-    {
-        if (M.empty() || tt.M.empty()) return 0;
-        if (tree != tt.tree) throw std::invalid_argument("tt1.overlap(tt2) with different tree");
-        auto prod = vector<arma::Mat<T>> (M.size());
-        for(auto p:tree.leaves()) {// initialize the leaves: L(A,B) = tt.M(A,a,s) * M(B,a,s)
-            int pos=tree.neigh.at(p).to_int().begin()->second;
-            auto Mc=cube_swap_indices(M[p],0,pos);
-            auto Nc=cube_swap_indices(tt.M[p],0,pos);
-            prod[p]=cube_as_matrix1(Nc) * cube_as_matrix1(Mc).t();
-        }
-
-        auto neigh=tree.neigh;
-        for(auto [from,to]:tree.leavesToRoot()) {
-            int pos=neigh.at(to).pos(from);
-            if (tree.nodes.contains(to)) { // physical node: like mps
-                auto Mc=cube_swap_indices(M[to],1,pos);
-                auto Nc=cube_swap_indices(tt.M[to],1,pos);
-                // L(A,B)=L(a,b)*Nc(A,a,s)*Mc(B,b,s)
-                arma::Cube<T> LN=mat_cube(prod[from].st().eval(),Nc,1);
-                prod[to]=cube_as_matrix1(LN) * cube_as_matrix1(Mc).t();
-            }
-            else if (neigh[to].size()==3){ // virtual node: 1st visit
-                // L(A,s,B,S)=L(a,b)*N(A,a,s)*M(B,b,S)
-                arma::Cube<T> LN=mat_cube(prod[from].st().eval(),tt.M[to], pos);  //LN(A,b,s)
-                prod[to]=cube_cube<T>(LN,arma::conj(M[to]),pos);
-            }
-            else if (neigh[to].size()==2){ // vitual node: 2nd visit
-                if (pos==0) {
-                    // L(s,S)=Lf(a,b)*Lt(a,s,b,S)
-                    auto nS=prod[to].n_cols/prod[from].n_cols;
-                    auto ns=prod[to].n_rows/prod[from].n_rows;
-                    arma::Cube<T> Lt(prod[to].memptr(), prod[to].n_rows, prod[from].n_cols, nS); // Lt(as,b,S)
-                    Lt=cube_swap_indices(Lt,0,1); // Lt(b,as,S)
-                    arma::Mat<T> Ltm(Lt.memptr(), Lt.n_rows*prod[from].n_rows, ns*nS); // Lt(ba,sS)
-                    arma::Mat<T> Lf=arma::reshape(prod[from].st(),1,prod[from].size());
-                    prod[to]=arma::reshape(Lf*Ltm, ns,nS);
-                }
-                else {
-                    // L(s,S)=Lf(a,b)*Lt(sa,Sb)
-                    auto nS=prod[to].n_cols/prod[from].n_cols;
-                    auto ns=prod[to].n_rows/prod[from].n_rows;
-                    arma::Cube<T> Lt(prod[to].memptr(), prod[to].n_rows,  nS, prod[from].n_cols); // Lt(sa,S,b)
-                    Lt=cube_swap_indices(Lt,0,1); // Lt(S,sa,b)
-                    arma::Mat<T> Ltm(Lt.memptr(), ns*nS, prod[from].size()); // Lt(Ss,ab)
-                    arma::Mat<T> Lf=arma::reshape(prod[from],1,prod[from].size());
-                    prod[to]=arma::reshape(Lf*Ltm.st(), ns,nS).st();
-                }
-            }
-            else if (neigh[to].size()==1) { // virtual node: root
-                // L=L(a,b)*L(a,b)
-                T value=arma::dot(prod[from],prod[to]);
-                prod[to]=arma::Mat<T>(1,1, arma::fill::value(value));
-            }
-            else throw std::runtime_error("tree::overlap unexpected number of neighbors");
-
-            neigh[to].remove(from);
-            prod[from].clear();
-        }
-        return prod[tree.root](0,0);
-    }
+    T overlap(const TensorTree<T>& tt) const {return mps_overlap(M, tree, tt.M, tt.tree);};
 
     T norm2() const { return overlap(*this); }
 
-    /// compress the bond between site *from* and site *to*
-    void compress_bond(int from, int to, function<array<arma::Mat<T>,2>(arma::Mat<T>,bool)> mat_decomp)
-    {
-        auto ab = mat_decomp(cubeToMat_R(M.at(from), tree.neigh.at(from).pos(to)), true);
-        arma::Mat<T> &M1=ab[0];
-        arma::Mat<T> M2= ab[1] * cubeToMat_L(M.at(to), tree.neigh.at(to).pos(from));
-
-        vector<unsigned long int> shape_f{M.at(from).n_rows, M.at(from).n_cols, M.at(from).n_slices};
-        shape_f.at(tree.neigh.at(from).pos(to)) = M1.n_cols;
-        M.at(from) = matToCube_R(M1, shape_f, tree.neigh.at(from).pos(to));
-
-        vector<unsigned long int> shape_t{M.at(to).n_rows, M.at(to).n_cols, M.at(to).n_slices};
-        shape_t.at(tree.neigh.at(to).pos(from)) = M2.n_rows;
-        M.at(to) = matToCube_L(M2, shape_t, tree.neigh.at(to).pos(from));
-    }
-
     /// compress along the full tree
     void compress_tree(function<array<arma::Mat<T>,2>(arma::Mat<T>,bool)> mat_decomp){
-        for(auto [from, to]:tree.rootToLeaves()) compress_bond(from, to, mat_decomp);
+        for(auto [from, to]:tree.rootToLeaves()) compress_bond(M, from, to, tree, mat_decomp);
     }
 
     void compressSVD(double reltol=1e-12, int maxBondDim=0) { compress_tree(MatQR<T> {}); compress_tree(MatSVDFixedTol<T> {reltol,maxBondDim}); }
