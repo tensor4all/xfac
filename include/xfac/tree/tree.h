@@ -120,11 +120,16 @@ public:
         return std::make_pair(t0, t1);
     }
 
+    /// return a vector of leaf nodes, element ordering not guaranteed
     vector<int> leaves() const
     {
         vector<int> out;
-        for(auto x:nodes) // only a physical nodes can be a leaf
-            if (neigh.at(x).size()==1) out.push_back(x);
+        for (auto& [node, neighbors] : neigh) {
+            int count = 0;
+            for (int n : neighbors.from_int())
+                if (n != dummy_node) count++;
+            if (count < 2) out.push_back(node);
+        }
         return out;
     }
 

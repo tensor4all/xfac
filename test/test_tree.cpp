@@ -123,4 +123,30 @@ TEST_CASE( "Test tree" )
         REQUIRE(t1.root == tree.root);
     }
 
+    SECTION( "leafs" )
+    {
+        tree = makeTuckerTree(4, 3);
+
+        REQUIRE(tree.leaves() == std::vector<int>{0, 1, 2, 3});
+
+        // cutting off a part of the tree, the site where we have cutted must become leaf
+        // cut between two physical sites
+        auto [tree0, tree1] = tree.splitTree(4, 8);
+        REQUIRE(tree0.leaves() == std::vector<int>{0, 4});
+        REQUIRE(tree1.leaves() == std::vector<int>{1, 2, 3, 8});
+
+        // cut between a physical and an artificial site
+        auto [tree0_, tree1_] = tree.splitTree(8, 12);
+        REQUIRE(tree0_.leaves() == std::vector<int>{0, 8});
+        REQUIRE(tree1_.leaves() == std::vector<int>{1, 2, 3});
+
+        // cut twice, such that a previously artificial site becomes a leaf
+        auto [tree2, tree3] = tree.splitTree(12, 13);
+        REQUIRE(tree2.leaves() == std::vector<int>{0, 1});
+        REQUIRE(tree3.leaves() == std::vector<int>{2, 3});
+        auto [tree4, tree5] = tree2.splitTree(12, 8);
+        REQUIRE(tree4.leaves() == std::vector<int>{1, 12});
+        REQUIRE(tree5.leaves() == std::vector<int>{0, 8});
+    }
+
 }
