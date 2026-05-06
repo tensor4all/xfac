@@ -29,6 +29,23 @@ T mps_eval(vector<int> const& id, vector<arma::Cube<T>> const& M)
     return prod.eval()(0,0);
 }
 
+/// Returns <M|M1> for two MPS in tensor-train form.
+template<class T>
+T mps_overlap(vector<arma::Cube<T>> const& M, vector<arma::Cube<T>> const& M1)
+{
+    if (M.empty() || M1.empty()) return 0;
+    if (M.size() != M1.size())
+        throw std::invalid_argument("M1.overlap(M2) with different lengths");
+    arma::Mat<T> L(1,1, arma::fill::eye);
+    for(auto p=0u; p<M.size(); p++) {  // L(A,B) = L(a,b)*N(a,s,A)*M(b,s,B)
+        arma::Mat<T> LN=L.t()*cube_as_matrix1(M1.at(p));
+        auto LNm=arma::Mat<T>(LN.memptr(), LN.n_rows*M1[p].n_cols, M1[p].n_slices, false);
+        L=LNm.t()*cube_as_matrix2(M[p]);
+    }
+    return L(0,0);
+}
+
+
 /// stores a tensor train, i.e., a list of cubes.
 template<class T>
 struct TensorTrain {
@@ -56,19 +73,7 @@ struct TensorTrain {
     }
 
     /// compute the overlap with another tensor train
-    T overlap(const TensorTrain<T>& tt) const
-    {
-        if (M.empty() || tt.M.empty()) return 0;
-        if (M.size() != tt.M.size())
-            throw std::invalid_argument("tt1.overlap(tt2) with different lengths");
-        arma::Mat<T> L(1,1, arma::fill::eye);
-        for(auto p=0u; p<M.size(); p++) {  // L(A,B) = L(a,b)*N(a,s,A)*M(b,s,B)
-            arma::Mat<T> LN=L.t()*cube_as_matrix1(tt.M.at(p));
-            auto LNm=arma::Mat<T>(LN.memptr(), LN.n_rows*tt.M[p].n_cols, tt.M[p].n_slices, false);
-            L=LNm.t()*cube_as_matrix2(M[p]);
-        }
-        return L(0,0);
-    }
+    T overlap(const TensorTrain<T>& tt) const { return mps_overlap<T>(M, tt.M);}
 
     T norm2() const { return overlap(*this); }
 
