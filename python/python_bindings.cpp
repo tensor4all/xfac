@@ -190,14 +190,33 @@ PYBIND11_MODULE(xfacpy, m) {
     }, py::keep_alive<0, 1>()) /* Keep vector alive while iterator is used */
             ;
 
+    py::class_<IndexSet<int>>(m, "IndexSet")
+    .def(py::init<>())
+    .def(py::init<std::vector<int>>(), "ids"_a)
+    .def("size",     &IndexSet<int>::size)
+    .def("from_int", &IndexSet<int>::from_int, py::return_value_policy::copy)
+    .def("to_int",   &IndexSet<int>::to_int,   py::return_value_policy::copy)
+    .def("pos",      py::overload_cast<int const&>(&IndexSet<int>::pos, py::const_), "id"_a)
+    .def("at",       py::overload_cast<int>(&IndexSet<int>::at, py::const_), "i"_a)
+    .def("push_back",&IndexSet<int>::push_back, "i"_a)
+    .def("remove",   &IndexSet<int>::remove,    "i"_a)
+    .def("replace",  &IndexSet<int>::replace,   "from"_a, "to"_a)
+    .def("__len__",  &IndexSet<int>::size)
+    .def("__iter__", [](IndexSet<int> const& s) {
+        return py::make_iterator(s.from_int().begin(), s.from_int().end());
+    }, py::keep_alive<0, 1>())
+    .def("__repr__", [](IndexSet<int> const& s) {
+        auto v = s.from_int();
+        std::string r = "[";
+        for (int i = 0; i < (int)v.size(); i++) { if (i) r += ", "; r += std::to_string(v[i]); }
+        return r + "]";
+    })
+    ;
+
     py::class_<TopologyTree>(m,"TopologyTree")
             .def(py::init<>())
             .def(py::init<int>(), "root"_a)
             .def_readwrite("root",&TopologyTree::root)
-            .def("get_node_list",&TopologyTree::get_node_list)
-            .def("get_phys_node_list",&TopologyTree::get_phys_node_list)
-            .def("add_phys_node",&TopologyTree::add_phys_node, "n"_a)
-            .def("get_neigh_list",&TopologyTree::get_neigh_list)
             .def_readwrite("nodes",&TopologyTree::nodes)
             .def_readwrite("neigh",&TopologyTree::neigh)
             .def("size", &TopologyTree::size)
@@ -213,6 +232,8 @@ PYBIND11_MODULE(xfacpy, m) {
             ;
 
     m.def("makeTuckerTree",&makeTuckerTree,"dim"_a,"nBit"_a);
+
+    m.def("isValid", &isValid, "tree"_a, "verbose"_a=false);
 
     py::class_<TensorCI1Param>(m,"TensorCI1Param")
             .def(py::init<>())

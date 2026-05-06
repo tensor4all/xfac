@@ -30,30 +30,6 @@ public:
         neigh[to].push_back(from);
     }
 
-    void add_phys_node(int n)
-    {
-        if (neigh.find(n)==neigh.end()) throw std::invalid_argument("Tree::add_phys_node the node is not in node list");
-        nodes.insert(n);
-    }
-
-    std::vector<int> get_phys_node_list() const { return vector(nodes.begin(),nodes.end()); }
-
-    std::vector<int> get_node_list() const
-    {
-        std::vector<int> output;
-        for(auto& [node,neigh] : neigh)
-            output.push_back(node);
-        return output;
-    }
-
-    std::map<int,std::vector<int>> get_neigh_list() const
-    {
-        std::map<int,std::vector<int>> output;
-        for(auto& [node,neigh] : neigh)
-            output.emplace(node, neigh.from_int());
-        return output;
-    }
-
     /// split tree at the connecting edge between node0 and node1 and return the nodes of the two subtrees
     /// by default, only the physical nodes (which are not in nodes) are returned
     std::pair<std::set<int>, std::set<int>> split(int node0, int node1, bool physical_only=true) const
@@ -169,6 +145,7 @@ public:
             out<<std::endl;
         }
     }
+
     void save(std::string fileName) const { std::ofstream out(fileName); save(out); }
 
     static TopologyTree load(std::ifstream& in)
