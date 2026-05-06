@@ -150,3 +150,75 @@ TEST_CASE( "Test tree" )
     }
 
 }
+
+TEST_CASE("Tree validation")
+{
+    // valid star tree: physical nodes 0,1,2 connected via artificial node 3, root=0
+    TopologyTree valid;
+    valid.addEdge(0, 3);
+    valid.addEdge(1, 3);
+    valid.addEdge(2, 3);
+    valid.nodes = {0, 1, 2};
+    valid.root = 0;
+
+    SECTION("areNeighborsDefined")
+    {
+        REQUIRE(areNeighborsDefined(valid));
+
+        TopologyTree bad = valid;
+        bad.neigh.erase(3); // nodes 0, 1, 2 still reference 3
+        REQUIRE_FALSE(areNeighborsDefined(bad));
+    }
+
+    SECTION("areEdgesSymmetric")
+    {
+        REQUIRE(areEdgesSymmetric(valid));
+
+        TopologyTree bad = valid;
+        bad.neigh.at(3).remove(0); // 0 references 3 but 3 no longer references 0
+        REQUIRE_FALSE(areEdgesSymmetric(bad));
+    }
+
+    SECTION("isConnected")
+    {
+        REQUIRE(isConnected(valid));
+
+        TopologyTree bad = valid;
+        bad.neigh[10].push_back(11); // isolated component {10, 11}
+        bad.neigh[11].push_back(10);
+        REQUIRE_FALSE(isConnected(bad));
+    }
+
+    SECTION("isTree")
+    {
+        REQUIRE(isTree(valid));
+
+        TopologyTree bad = valid;
+        bad.neigh.at(0).push_back(1); // creates cycle 0 - 3 - 1 - 0
+        bad.neigh.at(1).push_back(0);
+        REQUIRE_FALSE(isTree(bad));
+    }
+
+    SECTION("areNodesInNeigh")
+    {
+        REQUIRE(areNodesInNeigh(valid));
+
+        TopologyTree bad = valid;
+        bad.nodes.insert(99); // 99 is not a key in neigh
+        REQUIRE_FALSE(areNodesInNeigh(bad));
+    }
+
+    SECTION("isRootInNeigh")
+    {
+        REQUIRE(isRootInNeigh(valid));
+
+        TopologyTree bad = valid;
+        bad.root = 99; // 99 is not a key in neigh
+        REQUIRE_FALSE(isRootInNeigh(bad));
+    }
+
+    SECTION("isValid")
+    {
+        REQUIRE(isValid(valid));
+    }
+}

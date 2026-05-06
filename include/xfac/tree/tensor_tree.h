@@ -128,7 +128,9 @@ struct TensorTree {
     vector< arma::Cube<T> > M; ///< list of 3-leg tensors
 
     TensorTree()=default;
-    TensorTree(TopologyTree const& tree_) : tree(tree_), M(tree_.size()) {}
+    TensorTree(TopologyTree const& tree_) : tree(tree_), M(tree_.size()) {
+        if (!isValid(tree)) throw std::invalid_argument("TensorTree: tree is not valid");
+    }
 
     /// evaluate the full tensor tree at a given multi index.
     T eval(vector<int> const& id) const {

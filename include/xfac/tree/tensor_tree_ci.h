@@ -49,7 +49,6 @@ struct TensorTreeCI {
         , localSet {localDim.size()}
         , tt {tree}
     {
-        tree_.validate(); // throws std::invalid_argument if tree is disconnected, cyclic, or has wrong index layout
         if (localDim.size() != tree.nodes.size()) throw std::invalid_argument("tree and localDim are incompatible");
         if (param.pivot1.empty())
             param.pivot1.resize(localDim.size(), 0);
