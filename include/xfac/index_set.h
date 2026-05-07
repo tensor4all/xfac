@@ -110,6 +110,16 @@ public:
         to_int_data.insert({to, to_int_data.at(from)});
         to_int_data.erase(from);
     }
+
+    void reorder(vector<int> const& order)
+    {
+        if (order.size() != from_int_data.size())
+            throw std::invalid_argument("IndexSet::reorder: order size mismatch");
+        vector<Index> reordered(from_int_data.size());
+        for (int i = 0; i < (int)order.size(); i++)
+            reordered[i] = from_int_data.at(order[i]);
+        *this = IndexSet(reordered);
+    }
 };
 
 template<class Index=int>

@@ -201,6 +201,7 @@ PYBIND11_MODULE(xfacpy, m) {
     .def("push_back",&IndexSet<int>::push_back, "i"_a)
     .def("remove",   &IndexSet<int>::remove,    "i"_a)
     .def("replace",  &IndexSet<int>::replace,   "from"_a, "to"_a)
+    .def("reorder", &IndexSet<int>::reorder, "order"_a)
     .def("__len__",  &IndexSet<int>::size)
     .def("__iter__", [](IndexSet<int> const& s) {
         return py::make_iterator(s.from_int().begin(), s.from_int().end());

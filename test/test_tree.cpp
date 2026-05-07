@@ -3,6 +3,7 @@
 #include<iostream>
 #include "xfac/tree/tree.h"
 
+
 /// Overload outstream to write vectors of numbers to the console
 
 template< typename T >
@@ -149,6 +150,28 @@ TEST_CASE( "Test tree" )
         REQUIRE(tree5.leaves() == std::vector<int>{0, 8});
     }
 
+    SECTION( "reorder" )
+    {
+        tree = makeTuckerTree(4, 3);
+
+        std::cout<<"original tree: node neighbors\n";
+        for (auto i=0u; i<tree.size(); i++)
+            std::cout << i << " " << tree.neigh[i].from_int()  <<  "\n";
+
+        auto tree_reordered = reorder_neighbors(tree);
+
+        std::cout<<"reordered tree: node neighbors\n";
+        for (auto i=0u; i<tree_reordered.size(); i++)
+            std::cout << i << " " << tree_reordered.neigh[i].from_int()  <<  "\n";
+
+        REQUIRE(same_topology(tree, tree_reordered));
+
+        // reorder a reordered tree
+        for (int i = 0; i < 100; ++i){
+            tree_reordered = reorder_neighbors(tree_reordered, /*seed*/ i);
+            REQUIRE(same_topology(tree, tree_reordered));
+        }
+    }
 }
 
 TEST_CASE("Tree validation")

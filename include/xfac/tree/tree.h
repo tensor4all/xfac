@@ -9,6 +9,7 @@
 #include <queue>
 #include <stdexcept>
 #include <cassert>
+#include <random>
 
 namespace xfac {
 
@@ -377,6 +378,54 @@ inline bool isValid(TopologyTree const& tree, bool verbose = false)
     return valid;
 }
 
+
+//--- Utility routines, mainly for debugging tree algorithms
+
+/// Returns a random permutation of [0, ..., n-1] using a given random number generator
+inline std::vector<int> random_ordering(int n, std::mt19937& rng)
+{
+    std::vector<int> order = iota(n);
+    std::shuffle(order.begin(), order.end(), rng);
+    return order;
+};
+
+/// Returns a random permutation of [0, ..., n-1]
+inline std::vector<int> random_ordering(int n){
+    std::mt19937 rng{std::random_device{}()};
+    return random_ordering(n, rng);
+};
+
+/// Returns a copy of tree with neighbor lists randomly permuted
+inline TopologyTree reorder_neighbors(TopologyTree const & tree, unsigned int seed = std::random_device{}()){
+
+    auto tree_reordered = tree;
+    std::mt19937 rng{seed};
+
+    // on each node reorder the neighbor dict randomly
+    for (auto node=0u; node<tree.size(); node++){
+        int size = tree_reordered.neigh.at(node).from_int().size();
+        auto ordering = random_ordering(size, rng);
+        tree_reordered.neigh.at(node).reorder(ordering);
+    }
+    return tree_reordered;
+};
+
+/// Returns true if a and b have the same nodes and neighbor sets, ignoring order and dummy nodes (-1)
+inline bool same_topology(TopologyTree const& a, TopologyTree const& b)
+{
+    int dummy_node = -1;
+    if (a.nodes != b.nodes || a.neigh.size() != b.neigh.size()) return false;
+    for (auto& [node, neighbors] : a.neigh) {
+        if (!b.neigh.count(node)) return false;
+        auto filter = [dummy_node](std::vector<int> v) {
+            v.erase(std::remove(v.begin(), v.end(), dummy_node), v.end());
+            std::sort(v.begin(), v.end());
+            return v;
+        };
+        if (filter(neighbors.from_int()) != filter(b.neigh.at(node).from_int())) return false;
+    }
+    return true;
+}
 
 
 
