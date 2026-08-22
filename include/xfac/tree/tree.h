@@ -179,19 +179,19 @@ public:
 
 private:
 
-    void walk_depth_first(std::vector<int>& path, int nodeid, int parent=-1) const
+    void walk_depth_first(std::vector<int>& path, int nodeid, int parent=dummy_node) const
     {
         path.push_back(nodeid);
         for ( auto n: this -> neigh.at(nodeid).from_int() )
-            if (n!=parent) walk_depth_first(path, n, nodeid);
-        if (parent!=-1) path.push_back(parent);
+            if (n!=parent && n!=dummy_node) walk_depth_first(path, n, nodeid);
+        if (parent!=dummy_node) path.push_back(parent);
     }
 
-    void leaves_to_root(std::vector<std::pair<int,int>>& path, int nodeid, int parent=-1) const
+    void leaves_to_root(std::vector<std::pair<int,int>>& path, int nodeid, int parent=dummy_node) const
     {
         for ( auto n: this -> neigh.at(nodeid).from_int() )
-            if (n!=parent) leaves_to_root(path, n, nodeid);
-        if (parent!=-1) path.push_back({nodeid,parent});
+            if (n!=parent && n!=dummy_node) leaves_to_root(path, n, nodeid);
+        if (parent!=dummy_node) path.push_back({nodeid,parent});
     }
     static constexpr int dummy_node = -1; // special value used internally, do not attribute a node to this value
 };
