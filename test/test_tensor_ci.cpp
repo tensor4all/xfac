@@ -161,3 +161,41 @@ TEST_CASE("quantics")
 
 }
 
+
+/// Regression test for the quantics coordinate -> index mapping (issue #29, PR #20).
+/// Going from a grid point bitvector to its coordinate and back must return the same
+/// bitvector.  Truncating the floating point division fails as soon as (b-a)/2^nBit is
+/// not a power of two, because i*deltaX may land slightly below the exact value of i.
+TEST_CASE("quantics coord_to_id round trip")
+{
+    struct GridCase { double a, b; int nBit; };
+    for (auto const& c : {GridCase{0.0, 1.0, 12}, GridCase{1.0, 4*M_PI, 12}, GridCase{0.0, 10.0, 14}, GridCase{-2.5, 3.7, 12}})
+    {
+        INFO("grid=["<<c.a<<","<<c.b<<"] nBit="<<c.nBit);
+        grid::Quantics grid(c.a, c.b, c.nBit);
+        unsigned long long nPoint=1ull<<c.nBit;
+        int nBad=0;
+        vector<int> id(c.nBit);
+        for(unsigned long long i=0; i<nPoint; i++) {
+            for(int d=0; d<c.nBit; d++) id[d]=(i>>d)&1ull;
+            if (grid.coord_to_id(grid.id_to_coord(id)) != id) nBad++;
+        }
+        REQUIRE(nBad==0);
+
+        // the map x -> index must be non decreasing on [a,b), and b must be clamped to
+        // the last grid point (it is not part of the grid and used to wrap to index 0)
+        unsigned long long prev=0, last=nPoint-1;
+        int nNonMonotonic=0;
+        for(int k=0; k<=100000; k++) {
+            double x=grid.a+(grid.b-grid.a)*k/100000.0;
+            auto idk=grid.coord_to_id({x});
+            unsigned long long v=0;
+            for(int d=0; d<grid.nBit; d++) v |= (static_cast<unsigned long long>(idk[d])<<d);
+            if (v<prev) nNonMonotonic++;
+            prev=v;
+            if (k==100000) REQUIRE(v==last);   // x==b
+        }
+        REQUIRE(nNonMonotonic==0);
+        REQUIRE(grid.coord_to_id({grid.b})==grid.coord_to_id({grid.a+grid.deltaX*(nPoint-1)}));
+    }
+}

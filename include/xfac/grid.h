@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <math.h>
+#include <cmath>
 #include<vector>
 #include<string>
 
@@ -85,12 +86,22 @@ struct Quantics {
 
     vector<int> tensorDims() const { return vector(tensorLen, tensorLocDim); }
 
+    /// Map a physical coordinate to the bitvector of the nearest grid point.
+    /// The nearest grid point is used (and not the floor of the cell index) since
+    /// i*deltaX may land slightly below the exact value of i in floating point, which
+    /// makes a truncating conversion return the previous point (see issue #29).
+    /// The index is clamped to [0,2^nBit-1]: the right end of the interval, x=b, is not
+    /// a grid point and would otherwise wrap around to bit 0.
     vector<int> coord_to_id(vector<double> const& us) const
     {
         assert(dim==us.size());
         vector<int> id(tensorLen,0);
+        unsigned long long nPoint= 1ull<<nBit;
         for(auto i=0u; i<us.size(); i++) {
-            std::bitset<64> bi=(us[i]-a)/deltaX;
+            long long k= std::llround((us[i]-a)/deltaX);
+            if (k<0) k=0;
+            if (static_cast<unsigned long long>(k)>=nPoint) k=nPoint-1;
+            std::bitset<64> bi(static_cast<unsigned long long>(k));
             for(auto d=0; d<nBit; d++)
                 if (fused) id[d] |= (bi[d]<<i);
                 else id[i+d*dim]=bi[d];
