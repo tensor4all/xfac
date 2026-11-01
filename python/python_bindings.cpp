@@ -138,6 +138,20 @@ void declare_TensorCI(py::module &m, std::string typestr) {
     py::class_<CTensorTraind>(m, ("CTensorTrain"s+typestr).c_str())
             .def_readonly("core",  &CTensorTraind::M)
             .def("eval", &CTensorTraind::eval)
+            // The elements of `core` are std::function<arma::Mat<T>(double)>. Calling one of
+            // them from Python fails with "RuntimeError: unhandled return_value_policy",
+            // because arma::Mat<T> has no Python caster registered (xfac#21). `eval_core`
+            // returns the sampled core as a numpy array instead.
+            .def("eval_core", [](CTensorTraind const& tt, size_t i, double x) {
+                    if (i >= tt.M.size())
+                        throw std::out_of_range("CTensorTrain::eval_core: core index "
+                                + std::to_string(i) + " out of range (len="
+                                + std::to_string(tt.M.size()) + ")");
+                    return carma::details::construct_array(new arma::Mat<T>(tt.M[i](x)));
+                }, "i"_a, "x"_a,
+                "Evaluate the continuous core tensor `i` at the point `x` and return it as a "
+                "2-D numpy array (bond dimensions x bond dimensions). Use this instead of "
+                "`tt.core[i](x)`.")
             ;
 
     using ctensorF=function<T(vector<double>)>;
