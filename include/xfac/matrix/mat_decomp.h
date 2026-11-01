@@ -287,9 +287,9 @@ struct ARRLUDecomp: public RRLUDecomp<T> {
         do {
             // take new random rows or cols trying to duplicate the rank
             if (!leftOrthogonal_)
-                for(auto x : take_n_random(set_diff(fA.n_rows, I0), std::max(1ul, I0.size())) ) I0.push_back(x);
+                for(auto x : take_n_random(set_diff(fA.n_rows, I0), std::max(1, static_cast<int>(I0.size()))) ) I0.push_back(x);
             else
-                for(auto x : take_n_random(set_diff(fA.n_cols, J0), std::max(1ul, J0.size())) ) J0.push_back(x);
+                for(auto x : take_n_random(set_diff(fA.n_cols, J0), std::max(1, static_cast<int>(J0.size()))) ) J0.push_back(x);
 
             // iterate
             for(int k=0; k<param.nRookIter; k++)
