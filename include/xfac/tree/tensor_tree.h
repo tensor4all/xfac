@@ -109,7 +109,8 @@ T mps_overlap(vector<arma::Cube<T>> const& M, TopologyTree const& tree, vector<a
         else if (neigh[to].size()==1) { // virtual node: root
             // L=L(a,b)*L(a,b)
             T value=arma::dot(prod[from],prod[to]);
-            prod[to]=arma::Mat<T>(1,1, arma::fill::value(value));
+            prod[to]=arma::Mat<T>(1,1);
+            prod[to](0,0)=value;
         }
         else throw std::runtime_error("mps_overlap(): unexpected number of neighbors");
 
